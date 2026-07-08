@@ -13,9 +13,9 @@ import { signOut } from "@/lib/auth";
 const LINKS: { href: string; label: string; built: boolean }[] = [
   { href: "/", label: "Home", built: true },
   { href: "/signin", label: "Sign In", built: true },
-  { href: "/masters/customers", label: "Customer Master", built: false },
-  { href: "/masters/gl", label: "GL Master", built: false },
-  { href: "/invoices", label: "Sales Invoices", built: false },
+  { href: "/masters/customers", label: "Customer Master", built: true },
+  { href: "/masters/gl", label: "GL Master", built: true },
+  { href: "/invoices", label: "Sales Invoices", built: true },
   { href: "/receipts", label: "Receipt Entry", built: false },
   { href: "/upload", label: "Upload Report", built: false },
   { href: "/reminders", label: "AR Followup", built: true },
