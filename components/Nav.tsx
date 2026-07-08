@@ -14,16 +14,16 @@ const LINKS: { href: string; label: string; built: boolean }[] = [
   { href: "/", label: "Home", built: true },
   { href: "/signin", label: "Sign In", built: true },
   { href: "/masters/customers", label: "Customer Master", built: true },
-  { href: "/masters/gl", label: "GL Master", built: false },
+  { href: "/masters/gl", label: "GL Master", built: true },
   { href: "/invoices", label: "Sales Invoices", built: true },
   { href: "/receipts", label: "Receipt Entry", built: false },
   { href: "/upload", label: "Upload Report", built: false },
   { href: "/reminders", label: "AR Followup", built: true },
   { href: "/reminder-template", label: "Reminder Template", built: true },
   { href: "/reports/statement", label: "Customer Statement", built: false },
-  { href: "/reports/ageing", label: "AR Ageing", built: false },
-  { href: "/cashflow", label: "Cashflow Projection", built: false },
-  { href: "/dashboard", label: "Dashboard", built: false },
+  { href: "/reports/ageing", label: "AR Ageing", built: true },
+  { href: "/cashflow", label: "Cashflow Projection", built: true },
+  { href: "/dashboard", label: "Dashboard", built: true },
 ];
 
 export function Nav() {

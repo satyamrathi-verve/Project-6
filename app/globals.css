@@ -9,3 +9,17 @@
 body {
   @apply bg-slate-50 text-slate-800 antialiased;
 }
+
+@media print {
+  nav {
+    display: none !important;
+  }
+  main {
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  body {
+    background: white;
+  }
+}
