@@ -140,9 +140,14 @@ export default function InvoiceViewPage() {
         title={`Invoice ${invoice.invoice_no}`}
         subtitle={`Dated ${formatDate(invoice.invoice_date)} · Due ${formatDate(invoice.due_date)}`}
         action={
-          <Link href="/invoices" className="text-sm font-medium text-brand hover:underline">
-            ← All invoices
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href={`/invoices/print/${invoice.id}`} className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90">
+              Print Preview
+            </Link>
+            <Link href="/invoices" className="text-sm font-medium text-brand hover:underline">
+              ← All invoices
+            </Link>
+          </div>
         }
       />
 
