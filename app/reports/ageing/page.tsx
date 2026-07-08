@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DataTable, type Column } from "@/components/DataTable";
 import { PageHeader } from "@/components/PageHeader";
 import { NotConfigured } from "@/components/NotConfigured";
+import { Modal } from "@/components/Modal";
 import { isConfigured, supabase } from "@/lib/supabase";
 import { outstandingOf, type InvoiceWithAllocations } from "@/lib/receivables";
 import type { Customer } from "@/lib/types";
@@ -44,11 +45,17 @@ function bucketFor(dueDate: string, today: Date): Bucket {
   return "b90plus";
 }
 
+function daysOverdue(dueDate: string): number {
+  const days = Math.floor((new Date().getTime() - new Date(dueDate).getTime()) / 86400000);
+  return Math.max(0, days);
+}
+
 export default function AgeingReportPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [invoices, setInvoices] = useState<InvoiceWithAllocations[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<AgeingRow | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -121,30 +128,133 @@ export default function AgeingReportPage() {
     [rows]
   );
 
+  const customerInvoices = useMemo(() => {
+    if (!selectedCustomer) return [];
+    return invoices
+      .filter((inv) => inv.customer_id === selectedCustomer.id && outstandingOf(inv) > 0)
+      .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime());
+  }, [invoices, selectedCustomer]);
+
+  const detailColumns: Column<InvoiceWithAllocations>[] = [
+    { key: "invoice_no", header: "Invoice #" },
+    {
+      key: "invoice_date",
+      header: "Invoice Date",
+      render: (r) => new Date(r.invoice_date).toLocaleDateString("en-IN"),
+    },
+    { key: "customer_name", header: "Customer Name", render: () => selectedCustomer?.name ?? "" },
+    { key: "due_date", header: "Due Date", render: (r) => new Date(r.due_date).toLocaleDateString("en-IN") },
+    {
+      key: "total",
+      header: "Total Bill Amount",
+      className: "text-right",
+      render: (r) => money.format(Number(r.total)),
+    },
+    {
+      key: "outstanding",
+      header: "Due Bill Amount",
+      className: "text-right",
+      render: (r) => money.format(outstandingOf(r)),
+    },
+    {
+      key: "overdueDays",
+      header: "Overdue Days",
+      className: "text-right",
+      render: (r) => String(daysOverdue(r.due_date)),
+    },
+  ];
+
   const columns: Column<AgeingRow>[] = [
-    { key: "name", header: "Customer" },
-    { key: "notDue", header: "Not Due", className: "text-right", render: (r) => money.format(r.notDue) },
-    { key: "b0_30", header: "0–30 Days", className: "text-right", render: (r) => money.format(r.b0_30) },
-    { key: "b31_60", header: "31–60 Days", className: "text-right", render: (r) => money.format(r.b31_60) },
-    { key: "b61_90", header: "61–90 Days", className: "text-right", render: (r) => money.format(r.b61_90) },
+    {
+      key: "name",
+      header: "Customer",
+      sortable: true,
+      render: (r) => (
+        <button
+          type="button"
+          onClick={() => setSelectedCustomer(r)}
+          className="text-left font-medium text-brand hover:underline"
+        >
+          {r.name}
+        </button>
+      ),
+    },
+    {
+      key: "notDue",
+      header: "Not Due",
+      sortable: true,
+      className: "text-right",
+      render: (r) => (
+        <button type="button" onClick={() => setSelectedCustomer(r)} className="hover:underline">
+          {money.format(r.notDue)}
+        </button>
+      ),
+    },
+    {
+      key: "b0_30",
+      header: "0–30 Days",
+      sortable: true,
+      className: "text-right",
+      render: (r) => (
+        <button type="button" onClick={() => setSelectedCustomer(r)} className="hover:underline">
+          {money.format(r.b0_30)}
+        </button>
+      ),
+    },
+    {
+      key: "b31_60",
+      header: "31–60 Days",
+      sortable: true,
+      className: "text-right",
+      render: (r) => (
+        <button type="button" onClick={() => setSelectedCustomer(r)} className="hover:underline">
+          {money.format(r.b31_60)}
+        </button>
+      ),
+    },
+    {
+      key: "b61_90",
+      header: "61–90 Days",
+      sortable: true,
+      className: "text-right",
+      render: (r) => (
+        <button type="button" onClick={() => setSelectedCustomer(r)} className="hover:opacity-80">
+          <span className="rounded px-2 py-0.5 font-medium bg-red-100 text-red-600">
+            {money.format(r.b61_90)}
+          </span>
+        </button>
+      ),
+    },
     {
       key: "b90plus",
       header: "90+ Days",
+      sortable: true,
       className: "text-right",
       render: (r) => (
-        <span className={r.b90plus > 0 ? "rounded px-2 py-0.5 font-semibold bg-rose-100 text-rose-700" : ""}>
-          {money.format(r.b90plus)}
-        </span>
+        <button type="button" onClick={() => setSelectedCustomer(r)} className="hover:opacity-80">
+          <span className="rounded px-2 py-0.5 font-semibold bg-red-200 text-red-800">
+            {money.format(r.b90plus)}
+          </span>
+        </button>
       ),
     },
-    { key: "total", header: "Total", className: "text-right font-semibold", render: (r) => money.format(r.total) },
+    {
+      key: "total",
+      header: "Total",
+      className: "text-right font-semibold",
+      render: (r) => (
+        <button type="button" onClick={() => setSelectedCustomer(r)} className="hover:underline">
+          {money.format(r.total)}
+        </button>
+      ),
+    },
   ];
 
   return (
     <div>
       <PageHeader
         title="AR Ageing"
-        subtitle="Outstanding receivables by customer, split into age buckets."
+        subtitle="Outstanding receivables by customer, split into age buckets. Click a customer or amount for invoice detail."
         action={
           <button
             type="button"
@@ -182,6 +292,16 @@ export default function AgeingReportPage() {
             }
           />
         </div>
+      )}
+
+      {selectedCustomer && (
+        <Modal title={`${selectedCustomer.name} — Outstanding Invoices`} onClose={() => setSelectedCustomer(null)}>
+          <DataTable
+            columns={detailColumns}
+            rows={customerInvoices}
+            empty="No outstanding invoices for this customer."
+          />
+        </Modal>
       )}
     </div>
   );
