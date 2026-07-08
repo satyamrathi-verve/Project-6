@@ -16,7 +16,7 @@ const LINKS: { href: string; label: string; built: boolean }[] = [
   { href: "/masters/customers", label: "Customer Master", built: true },
   { href: "/masters/gl", label: "GL Master", built: true },
   { href: "/invoices", label: "Sales Invoices", built: true },
-  { href: "/receipts", label: "Receipt Entry", built: false },
+  { href: "/receipts", label: "Receipt Entry", built: true },
   { href: "/upload", label: "Upload Report", built: false },
   { href: "/reminders", label: "AR Followup", built: true },
   { href: "/reminder-template", label: "Reminder Template", built: true },
