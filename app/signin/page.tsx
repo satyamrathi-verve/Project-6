@@ -33,7 +33,7 @@ export default function SignInPage() {
     }
     signIn();
     setError("");
-    router.push("/");
+    router.push("/dashboard");
   }
 
   return (

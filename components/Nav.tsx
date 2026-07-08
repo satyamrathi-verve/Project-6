@@ -5,14 +5,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "@/lib/auth";
 
 /*
-  Left sidebar. Only "Home" exists to start with — everything else is the roadmap
-  your team builds. Each unbuilt screen shows a "build me" tag. When you finish a
-  screen, flip its `built` to true (and point `href` at the route you created) so it
-  turns into a real link.
+  Left sidebar. Home ("/") and Sign In aren't listed here — Home is just a
+  redirect shim to Dashboard and Sign In isn't a meaningful destination once
+  you're already signed in (both routes still exist for their actual flows).
+  Each unbuilt screen shows a "build me" tag. When you finish a screen, flip
+  its `built` to true (and point `href` at the route you created) so it turns
+  into a real link.
 */
 const LINKS: { href: string; label: string; built: boolean }[] = [
-  { href: "/", label: "Home", built: true },
-  { href: "/signin", label: "Sign In", built: true },
   { href: "/masters/customers", label: "Customer Master", built: true },
   { href: "/masters/gl", label: "GL Master", built: true },
   { href: "/invoices", label: "Sales Invoices", built: true },
