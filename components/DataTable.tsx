@@ -38,6 +38,7 @@ export function DataTable<T extends { id: string }>({
   onSort,
   footerRow,
   rowClassName,
+  tableClassName,
 }: {
   columns: Column<T>[];
   rows: T[];
@@ -49,13 +50,15 @@ export function DataTable<T extends { id: string }>({
   footerRow?: ReactNode;
   /** Optional per-row className, e.g. to highlight a row. */
   rowClassName?: (row: T) => string;
+  /** Optional extra class on the <table> itself, e.g. "table-fixed" to distribute columns evenly. */
+  tableClassName?: string;
 }) {
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const hasFilters = columns.some((c) => c.filter);
 
   return (
     <div className={`rounded-xl border border-slate-200 bg-white ${hasFilters ? "" : "overflow-hidden"}`}>
-      <table className="w-full text-sm">
+      <table className={`w-full text-sm ${tableClassName ?? ""}`}>
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50 text-left">
             {columns.map((c, i) => (
@@ -74,7 +77,7 @@ export function DataTable<T extends { id: string }>({
                     >
                       {c.header}
                       <span className="w-3 text-[10px] text-slate-400">
-                        {sortKey === c.key ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                        {sortKey === c.key ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
                       </span>
                     </button>
                   ) : (

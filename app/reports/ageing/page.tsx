@@ -56,6 +56,8 @@ export default function AgeingReportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<AgeingRow | null>(null);
+  const [sortKey, setSortKey] = useState<string>("total");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     async function load() {
@@ -107,10 +109,27 @@ export default function AgeingReportPage() {
       row.total += outstanding;
     }
 
-    return Array.from(byCustomer.values())
-      .filter((r) => r.total > 0)
-      .sort((a, b) => b.total - a.total);
+    return Array.from(byCustomer.values()).filter((r) => r.total > 0);
   }, [customers, invoices]);
+
+  const sortedRows = useMemo(() => {
+    const sorted = [...rows].sort((a, b) => {
+      if (sortKey === "name") return a.name.localeCompare(b.name);
+      const av = Number(a[sortKey as Bucket | "total"] ?? 0);
+      const bv = Number(b[sortKey as Bucket | "total"] ?? 0);
+      return av - bv;
+    });
+    return sortDir === "asc" ? sorted : sorted.reverse();
+  }, [rows, sortKey, sortDir]);
+
+  function toggleSort(key: string) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
 
   const grandTotal = useMemo(
     () =>
@@ -219,9 +238,13 @@ export default function AgeingReportPage() {
       className: "text-right",
       render: (r) => (
         <button type="button" onClick={() => setSelectedCustomer(r)} className="hover:opacity-80">
-          <span className="rounded px-2 py-0.5 font-medium bg-red-100 text-red-600">
-            {money.format(r.b61_90)}
-          </span>
+          {r.b61_90 > 0 ? (
+            <span className="rounded px-2 py-0.5 font-medium bg-red-100 text-red-600">
+              {money.format(r.b61_90)}
+            </span>
+          ) : (
+            money.format(r.b61_90)
+          )}
         </button>
       ),
     },
@@ -232,9 +255,13 @@ export default function AgeingReportPage() {
       className: "text-right",
       render: (r) => (
         <button type="button" onClick={() => setSelectedCustomer(r)} className="hover:opacity-80">
-          <span className="rounded px-2 py-0.5 font-semibold bg-red-200 text-red-800">
-            {money.format(r.b90plus)}
-          </span>
+          {r.b90plus > 0 ? (
+            <span className="rounded px-2 py-0.5 font-semibold bg-red-200 text-red-800">
+              {money.format(r.b90plus)}
+            </span>
+          ) : (
+            money.format(r.b90plus)
+          )}
         </button>
       ),
     },
@@ -276,8 +303,11 @@ export default function AgeingReportPage() {
         <div className="print:overflow-visible">
           <DataTable
             columns={columns}
-            rows={rows}
+            rows={sortedRows}
             empty="No outstanding invoices."
+            sortKey={sortKey}
+            sortDir={sortDir}
+            onSort={toggleSort}
             rowClassName={(r) => (r.b90plus > 0 ? "bg-rose-50/50" : "")}
             footerRow={
               <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold text-slate-900">
