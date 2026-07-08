@@ -6,8 +6,10 @@ import { useParams } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type Column } from "@/components/DataTable";
 import { NotConfigured } from "@/components/NotConfigured";
+import { StatusBadge } from "@/components/StatusBadge";
 import { isConfigured, supabase } from "@/lib/supabase";
-import type { Customer, Invoice, InvoiceItem, InvoiceStatus } from "@/lib/types";
+import { money, formatDate } from "@/lib/format";
+import type { Customer, Invoice, InvoiceItem } from "@/lib/types";
 
 /*
   Sales Invoice — View: read-only detail of one invoice.
@@ -23,37 +25,6 @@ type AllocationRow = {
     mode: string;
   } | null;
 };
-
-const money = new Intl.NumberFormat("en-IN", {
-  style: "currency",
-  currency: "INR",
-  minimumFractionDigits: 2,
-});
-
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-const STATUS_STYLES: Record<InvoiceStatus, string> = {
-  paid: "bg-green-100 text-green-700",
-  open: "bg-blue-100 text-blue-700",
-  partial: "bg-amber-100 text-amber-700",
-  overdue: "bg-red-100 text-red-700",
-};
-
-function StatusBadge({ status }: { status: InvoiceStatus }) {
-  return (
-    <span
-      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${STATUS_STYLES[status]}`}
-    >
-      {status}
-    </span>
-  );
-}
 
 export default function InvoiceViewPage() {
   const params = useParams<{ id: string }>();
