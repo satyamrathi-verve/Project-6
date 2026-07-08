@@ -1,126 +1,164 @@
-'use client';
+"use client";
 
 import { useEffect, useState } from "react";
 import { DataTable } from "@/components/DataTable";
 import { FormField, inputClass } from "@/components/FormField";
-import { NotConfigured } from "@/components/NotConfigured";
 import { PageHeader } from "@/components/PageHeader";
+import { NotConfigured } from "@/components/NotConfigured";
 import { isConfigured, supabase } from "@/lib/supabase";
 import type { Customer } from "@/lib/types";
 
 type CustomerFormState = {
-  id?: string;
   code: string;
   name: string;
+  gstin: string;
+  pan: string;
   contact_person: string;
   email: string;
   phone: string;
   address: string;
   credit_limit: string;
   credit_days: string;
+  opening_balance: string;
 };
 
-const emptyForm = (): CustomerFormState => ({
+const emptyForm: CustomerFormState = {
   code: "",
   name: "",
+  gstin: "",
+  pan: "",
   contact_person: "",
   email: "",
   phone: "",
   address: "",
-  credit_limit: "",
-  credit_days: "",
-});
+  credit_limit: "0",
+  credit_days: "30",
+  opening_balance: "0",
+};
+
+function sanitizeNonNegative(value: string) {
+  const parsed = Number(value);
+  if (Number.isNaN(parsed)) return "0";
+  return String(Math.max(0, parsed));
+}
 
 export default function CustomerMasterPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<CustomerFormState>(emptyForm());
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState<CustomerFormState>(emptyForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const loadCustomers = async () => {
-    if (!supabase) return;
+  async function loadCustomers() {
+    if (!supabase) {
+      setError("Supabase is not configured yet.");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    const { data, error } = await supabase.from("customers").select("*").order("name", { ascending: true });
+    const { data, error: supabaseError } = await supabase
+      .from("customers")
+      .select("*")
+      .order("name", { ascending: true });
 
-    if (error) {
-      setError(error.message);
+    if (supabaseError) {
+      const message =
+        supabaseError.message.includes("permission denied") || supabaseError.code === "42501"
+          ? "Supabase permission denied for the customers table. The app is correct, but the table policy needs to allow read/write access for this project key."
+          : supabaseError.message;
+      setError(message);
       setCustomers([]);
     } else {
       setCustomers((data as Customer[]) ?? []);
-      setError(null);
+      setError("");
     }
 
     setLoading(false);
-  };
+  }
 
   useEffect(() => {
     void loadCustomers();
   }, []);
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!supabase) return;
+  function resetForm() {
+    setForm(emptyForm);
+    setEditingId(null);
+  }
 
-    setSaving(true);
-    setError(null);
-
-    const payload = {
-      code: form.code,
-      name: form.name,
-      contact_person: form.contact_person || null,
-      email: form.email || null,
-      phone: form.phone || null,
-      address: form.address || null,
-      credit_limit: Number(form.credit_limit) || 0,
-      credit_days: Number(form.credit_days) || 0,
-      opening_balance: 0,
-    };
-
-    if (form.id) {
-      const { error } = await supabase.from("customers").update(payload).eq("id", form.id);
-      if (error) {
-        setError(error.message);
-      } else {
-        setForm(emptyForm());
-        await loadCustomers();
-      }
-    } else {
-      const { error } = await supabase.from("customers").insert(payload);
-      if (error) {
-        setError(error.message);
-      } else {
-        setForm(emptyForm());
-        await loadCustomers();
-      }
-    }
-
-    setSaving(false);
-  };
-
-  const handleEdit = (customer: Customer) => {
+  function startEdit(customer: Customer) {
+    setEditingId(customer.id);
     setForm({
-      id: customer.id,
       code: customer.code,
       name: customer.name,
+      gstin: customer.gstin ?? "",
+      pan: customer.pan ?? "",
       contact_person: customer.contact_person ?? "",
       email: customer.email ?? "",
       phone: customer.phone ?? "",
       address: customer.address ?? "",
       credit_limit: String(customer.credit_limit ?? 0),
       credit_days: String(customer.credit_days ?? 0),
+      opening_balance: String(customer.opening_balance ?? 0),
     });
-  };
+  }
 
-  const handleCancel = () => {
-    setForm(emptyForm());
-  };
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!supabase) return;
+
+    setSubmitting(true);
+    setError("");
+
+    const payload = {
+      code: form.code.trim(),
+      name: form.name.trim(),
+      gstin: form.gstin.trim() || null,
+      pan: form.pan.trim() || null,
+      contact_person: form.contact_person.trim() || null,
+      email: form.email.trim() || null,
+      phone: form.phone.trim() || null,
+      address: form.address.trim() || null,
+      credit_limit: Number(form.credit_limit || 0),
+      credit_days: Number(form.credit_days || 0),
+      opening_balance: Number(form.opening_balance || 0),
+    };
+
+    let result;
+    if (editingId) {
+      result = await supabase.from("customers").update(payload).eq("id", editingId);
+    } else {
+      result = await supabase.from("customers").insert(payload);
+    }
+
+    if (result.error) {
+      const message =
+        result.error.message.includes("permission denied") || result.error.code === "42501"
+          ? "Supabase permission denied for the customers table. Please allow insert/update access for this project key."
+          : result.error.message;
+      setError(message);
+    } else {
+      resetForm();
+      await loadCustomers();
+    }
+
+    setSubmitting(false);
+  }
 
   return (
     <>
       <PageHeader
         title="Customer Master"
-        subtitle="Keep the customer list current and use it across invoices, receipts, and reports."
+        subtitle="A simple list of customers with add and edit actions for the AR team."
+        action={
+          <button
+            onClick={resetForm}
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          >
+            {editingId ? "Cancel edit" : "Add Customer"}
+          </button>
+        }
       />
 
       {!isConfigured && (
@@ -129,174 +167,166 @@ export default function CustomerMasterPage() {
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
         <div className="rounded-xl border border-slate-200 bg-white p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900">Customers</h3>
-              <p className="text-sm text-slate-500">A simple list to start the AR workflow.</p>
-            </div>
-          </div>
-
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Customer list
+          </h3>
           {loading ? (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-              Loading customers...
-            </div>
+            <p className="mt-4 text-sm text-slate-500">Loading customers…</p>
           ) : (
-            <DataTable
-              columns={[
-                { key: "code", header: "Code" },
-                { key: "name", header: "Name" },
-                { key: "contact_person", header: "Contact" },
-                { key: "credit_days", header: "Credit Days" },
-                {
-                  key: "credit_limit",
-                  header: "Credit Limit",
-                  render: (row) => <span>{formatCurrency(row.credit_limit)}</span>,
-                },
-                {
-                  key: "actions",
-                  header: "",
-                  render: (row) => (
-                    <button
-                      type="button"
-                      onClick={() => handleEdit(row)}
-                      className="text-sm font-medium text-brand hover:text-brand/80"
-                    >
-                      Edit
-                    </button>
-                  ),
-                },
-              ]}
-              rows={customers}
-              empty="No customers found yet."
-            />
+            <div className="mt-4">
+              <DataTable
+                columns={[
+                  { key: "code", header: "Code" },
+                  { key: "name", header: "Name" },
+                  { key: "contact_person", header: "Contact" },
+                  { key: "credit_days", header: "Credit days" },
+                  {
+                    key: "credit_limit",
+                    header: "Credit limit",
+                    render: (row) => `₹${Number(row.credit_limit ?? 0).toLocaleString()}`,
+                  },
+                  {
+                    key: "id",
+                    header: "Action",
+                    render: (row) => (
+                      <button
+                        onClick={() => startEdit(row)}
+                        className="text-sm font-medium text-brand hover:underline"
+                      >
+                        Edit
+                      </button>
+                    ),
+                  },
+                ]}
+                rows={customers}
+                empty="No customers found yet."
+              />
+            </div>
           )}
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-6">
-          <h3 className="text-lg font-semibold text-slate-900">{form.id ? "Edit customer" : "Add customer"}</h3>
-          <p className="mt-1 text-sm text-slate-500">
-            {form.id ? "Update the customer record below." : "Create a new customer to use across the app."}
-          </p>
-
-          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            {editingId ? "Edit customer" : "Add Customer"}
+          </h3>
+          <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
+            <FormField label="Code">
+              <input
+                className={inputClass}
+                value={form.code}
+                onChange={(e) => setForm((prev) => ({ ...prev, code: e.target.value }))}
+                required
+              />
+            </FormField>
+            <FormField label="Name">
+              <input
+                className={inputClass}
+                value={form.name}
+                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                required
+              />
+            </FormField>
+            <FormField label="GSTIN">
+              <input
+                className={inputClass}
+                value={form.gstin}
+                onChange={(e) => setForm((prev) => ({ ...prev, gstin: e.target.value }))}
+              />
+            </FormField>
+            <FormField label="PAN">
+              <input
+                className={inputClass}
+                value={form.pan}
+                onChange={(e) => setForm((prev) => ({ ...prev, pan: e.target.value }))}
+              />
+            </FormField>
+            <FormField label="Contact person">
+              <input
+                className={inputClass}
+                value={form.contact_person}
+                onChange={(e) => setForm((prev) => ({ ...prev, contact_person: e.target.value }))}
+              />
+            </FormField>
+            <FormField label="Email">
+              <input
+                type="email"
+                className={inputClass}
+                value={form.email}
+                onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+              />
+            </FormField>
+            <FormField label="Phone">
+              <input
+                className={inputClass}
+                value={form.phone}
+                onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+              />
+            </FormField>
+            <FormField label="Address">
+              <textarea
+                className={inputClass}
+                rows={3}
+                value={form.address}
+                onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
+              />
+            </FormField>
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Customer code">
-                <input
-                  required
-                  value={form.code}
-                  onChange={(event) => setForm({ ...form, code: event.target.value })}
-                  className={inputClass}
-                  placeholder="CUST001"
-                />
-              </FormField>
-
-              <FormField label="Customer name">
-                <input
-                  required
-                  value={form.name}
-                  onChange={(event) => setForm({ ...form, name: event.target.value })}
-                  className={inputClass}
-                  placeholder="Example Ltd"
-                />
-              </FormField>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Contact person">
-                <input
-                  value={form.contact_person}
-                  onChange={(event) => setForm({ ...form, contact_person: event.target.value })}
-                  className={inputClass}
-                  placeholder="Asha Kumar"
-                />
-              </FormField>
-
-              <FormField label="Email">
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={(event) => setForm({ ...form, email: event.target.value })}
-                  className={inputClass}
-                  placeholder="ops@example.com"
-                />
-              </FormField>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Phone">
-                <input
-                  value={form.phone}
-                  onChange={(event) => setForm({ ...form, phone: event.target.value })}
-                  className={inputClass}
-                  placeholder="9876543210"
-                />
-              </FormField>
-
               <FormField label="Credit days">
                 <input
                   type="number"
                   min="0"
-                  value={form.credit_days}
-                  onChange={(event) => setForm({ ...form, credit_days: event.target.value })}
                   className={inputClass}
-                  placeholder="30"
+                  value={form.credit_days}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, credit_days: sanitizeNonNegative(e.target.value) }))
+                  }
+                />
+              </FormField>
+              <FormField label="Credit limit">
+                <input
+                  type="number"
+                  min="0"
+                  className={inputClass}
+                  value={form.credit_limit}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, credit_limit: sanitizeNonNegative(e.target.value) }))
+                  }
                 />
               </FormField>
             </div>
-
-            <FormField label="Address">
-              <textarea
-                value={form.address}
-                onChange={(event) => setForm({ ...form, address: event.target.value })}
-                className={`${inputClass} min-h-24 resize-y`}
-                placeholder="Street, city, state"
-              />
-            </FormField>
-
-            <FormField label="Credit limit">
+            <FormField label="Opening balance">
               <input
                 type="number"
                 min="0"
-                value={form.credit_limit}
-                onChange={(event) => setForm({ ...form, credit_limit: event.target.value })}
                 className={inputClass}
-                placeholder="250000"
+                value={form.opening_balance}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, opening_balance: sanitizeNonNegative(e.target.value) }))
+                }
               />
             </FormField>
-
-            {error && <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
-
-            <div className="flex items-center gap-3">
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <div className="flex gap-3">
               <button
                 type="submit"
-                disabled={saving}
-                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand/90 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={submitting}
+                className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {saving ? "Saving..." : form.id ? "Update customer" : "Save customer"}
+                {submitting ? "Saving…" : editingId ? "Save changes" : "Create Customer"}
               </button>
-              {form.id && (
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={resetForm}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Clear
+              </button>
             </div>
           </form>
         </div>
       </div>
     </>
   );
-}
-
-function formatCurrency(value: number | null | undefined) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(value ?? 0);
 }
