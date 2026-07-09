@@ -18,6 +18,7 @@ type OverdueRow = InvoiceWithAllocations & {
   customers?: { name: string } | null;
   balance_due: number;
   aging_bucket: AgingBucket;
+  days_overdue: number;
 };
 
 type LogEntry = ReminderLog & {
@@ -38,8 +39,11 @@ function renderTemplate(template: string, data: Record<string, string>) {
   return template.replace(/\{([^{}]+)\}/g, (_, key) => data[key] ?? `{${key}}`);
 }
 
-function agingBucket(dueDate: string): AgingBucket {
-  const days = Math.floor((Date.now() - new Date(dueDate).getTime()) / 86400000);
+function daysOverdue(dueDate: string): number {
+  return Math.floor((Date.now() - new Date(dueDate).getTime()) / 86400000);
+}
+
+function agingBucket(days: number): AgingBucket {
   if (days < 0) return "Not due";
   if (days <= 30) return "0-30 days";
   if (days <= 60) return "31-60 days";
@@ -68,6 +72,8 @@ export default function AutoEmailShootPage() {
   const [customerFilter, setCustomerFilter] = useState("");
   const [invoiceNoFilter, setInvoiceNoFilter] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [sortKey, setSortKey] = useState<string>("aging_bucket");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     async function loadData() {
@@ -103,11 +109,15 @@ export default function AutoEmailShootPage() {
 
       if (!overdueRes.error && overdueRes.data) {
         const invoices = overdueRes.data as (InvoiceWithAllocations & { customers?: { name: string } | null })[];
-        const rows: OverdueRow[] = invoices.map((invoice) => ({
-          ...invoice,
-          balance_due: outstandingOf(invoice),
-          aging_bucket: agingBucket(invoice.due_date),
-        }));
+        const rows: OverdueRow[] = invoices.map((invoice) => {
+          const days = daysOverdue(invoice.due_date);
+          return {
+            ...invoice,
+            balance_due: outstandingOf(invoice),
+            aging_bucket: agingBucket(days),
+            days_overdue: days,
+          };
+        });
         setOverdueInvoices(rows);
       }
 
@@ -196,6 +206,44 @@ export default function AutoEmailShootPage() {
     }, {});
   }, [log]);
 
+  function toggleSort(key: string) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  const sortedInvoices = useMemo(() => {
+    function sortValue(row: OverdueRow): string | number {
+      switch (sortKey) {
+        case "customer":
+          return row.customers?.name ?? row.customer_id;
+        case "due_date":
+          return new Date(row.due_date).getTime();
+        case "aging_bucket":
+          return row.days_overdue;
+        case "balance_due":
+          return row.balance_due;
+        case "reminders_sent":
+          return remindersByInvoiceId[row.id]?.length ?? 0;
+        default:
+          return row.invoice_no;
+      }
+    }
+
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...filteredInvoices].sort((a, b) => {
+      const av = sortValue(a);
+      const bv = sortValue(b);
+      if (typeof av === "string" || typeof bv === "string") {
+        return String(av).localeCompare(String(bv)) * dir;
+      }
+      return (av - bv) * dir;
+    });
+  }, [filteredInvoices, sortKey, sortDir, remindersByInvoiceId]);
+
   // Selecting an invoice shows its full audit trail; selecting a customer shows
   // their consolidated touchpoint history across invoices; otherwise, the recent log.
   const historyTitle = invoiceNoFilter
@@ -221,11 +269,10 @@ export default function AutoEmailShootPage() {
 
     const logRows = selectedInvoices.map((invoice) => {
       const customerName = invoice.customers?.name ?? "Customer";
-      const daysOverdue = invoice.due_date ? String(Math.max(0, Math.floor((Date.now() - new Date(invoice.due_date).getTime()) / 86400000))) : "0";
       const data = {
         customer: customerName,
         amount: money.format(invoice.balance_due),
-        days_overdue: daysOverdue,
+        days_overdue: String(Math.max(0, invoice.days_overdue)),
         invoice_no: invoice.invoice_no,
         invoice_date: formatDate(invoice.invoice_date),
         due_date: formatDate(invoice.due_date),
@@ -281,16 +328,18 @@ export default function AutoEmailShootPage() {
         />
       ),
     },
-    { key: "invoice_no", header: "Invoice #" },
+    { key: "invoice_no", header: "Invoice #", sortable: true },
     {
       key: "customer",
       header: "Customer account",
+      sortable: true,
       render: (row) => row.customers?.name ?? row.customer_id,
     },
-    { key: "due_date", header: "Due date", render: (row) => formatDate(row.due_date) },
+    { key: "due_date", header: "Due date", sortable: true, render: (row) => formatDate(row.due_date) },
     {
       key: "aging_bucket",
       header: "Aging bucket",
+      sortable: true,
       render: (row) => (
         <span className={`rounded-full px-2 py-1 text-xs font-semibold ${agingClass[row.aging_bucket]}`}>
           {row.aging_bucket}
@@ -300,11 +349,13 @@ export default function AutoEmailShootPage() {
     {
       key: "balance_due",
       header: "Overdue amount",
+      sortable: true,
       render: (row) => money.format(row.balance_due),
     },
     {
       key: "reminders_sent",
       header: "Reminders sent",
+      sortable: true,
       render: (row) => {
         const entries = remindersByInvoiceId[row.id] || [];
         if (entries.length === 0) return <span className="text-slate-400">None yet</span>;
@@ -391,7 +442,10 @@ export default function AutoEmailShootPage() {
               ) : (
                 <DataTable
                   columns={columns}
-                  rows={filteredInvoices}
+                  rows={sortedInvoices}
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggleSort}
                   empty={
                     overdueInvoices.length === 0
                       ? "No overdue invoices found."
