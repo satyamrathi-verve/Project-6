@@ -80,15 +80,15 @@ export function Nav() {
   }
 
   return (
-    <nav className="flex h-full w-64 flex-col gap-1 overflow-y-auto border-r border-slate-200 bg-white p-4">
+    <nav className="flex h-full w-64 flex-col gap-1 overflow-y-auto bg-brand p-4">
       <div className="mb-5 flex items-center gap-2 px-1">
-        <Image src="/verve-logo.png" alt="Verve" width={110} height={54} className="h-9 w-auto" priority />
-        <span className="text-sm font-semibold text-slate-400">| AR Manager</span>
+        <Image src="/verve-logo-white.png" alt="Verve" width={110} height={54} className="h-9 w-auto" priority />
+        <span className="text-sm font-semibold text-white/70">| AR Manager</span>
       </div>
 
       {GROUPS.map((group) => (
         <div key={group.title} className="mb-3">
-          <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+          <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-white/40">
             {group.title}
           </p>
           <div className="flex flex-col gap-0.5">
@@ -98,13 +98,13 @@ export function Nav() {
                 return (
                   <span
                     key={l.href}
-                    className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-400"
+                    className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-white/30"
                   >
                     <span className="flex items-center gap-2.5">
                       <Icon className="h-4 w-4" />
                       {l.label}
                     </span>
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                    <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white/40">
                       build me
                     </span>
                   </span>
@@ -116,10 +116,10 @@ export function Nav() {
                   key={l.href}
                   href={l.href}
                   className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    active ? "bg-brand text-white" : "text-slate-700 hover:bg-slate-100"
+                    active ? "bg-white text-brand" : "text-white/80 hover:bg-white/10"
                   }`}
                 >
-                  <Icon className={`h-4 w-4 ${active ? "text-white" : "text-slate-400"}`} />
+                  <Icon className={`h-4 w-4 ${active ? "text-brand" : "text-white/50"}`} />
                   {l.label}
                 </Link>
               );
@@ -130,7 +130,7 @@ export function Nav() {
 
       <button
         onClick={handleSignOut}
-        className="mt-auto flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-500 hover:bg-slate-100"
+        className="mt-auto flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-white/70 hover:bg-white/10"
       >
         <LogOut className="h-4 w-4" />
         Sign out

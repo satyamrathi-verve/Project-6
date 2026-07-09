@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { FormField, inputClass } from "@/components/FormField";
+import { CheckCircle2, Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { inputClass } from "@/components/FormField";
 import { signIn } from "@/lib/auth";
 
 /*
@@ -16,19 +18,29 @@ const DEMO_LOGINS = [
   { username: "finance", password: "finance123" },
 ];
 
+const HIGHLIGHTS = [
+  "Live outstanding on every customer",
+  "Ageing, cashflow, and DSO at a glance",
+  "Reminder emails & collection tracking",
+];
+
 export default function SignInPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setBusy(true);
     const match = DEMO_LOGINS.some(
       (l) => l.username === username && l.password === password
     );
     if (!match) {
       setError("Wrong username or password. Try admin / admin123.");
+      setBusy(false);
       return;
     }
     signIn();
@@ -37,42 +49,113 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="flex min-h-[70vh] items-center justify-center">
-      <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8">
-        <p className="text-xs font-semibold uppercase tracking-widest text-brand">Verve</p>
-        <h2 className="mt-1 text-2xl font-bold text-slate-900">Sign in to AR Manager</h2>
-        <p className="mt-1 text-sm text-slate-500">Use one of the demo logins to continue.</p>
+    <div className="flex min-h-screen">
+      {/* Branded panel */}
+      <aside className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-brand p-12 text-white lg:flex">
+        <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-white/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-32 -left-16 h-96 w-96 rounded-full bg-black/10 blur-2xl" />
 
-        <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit}>
-          <FormField label="Username">
-            <input
-              className={inputClass}
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoFocus
-            />
-          </FormField>
-          <FormField label="Password">
-            <input
-              type="password"
-              className={inputClass}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </FormField>
+        <div className="relative">
+          <Image src="/verve-logo-white.png" alt="Verve" width={130} height={64} className="h-10 w-auto" priority />
+        </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="relative">
+          <h2 className="text-4xl font-bold leading-tight">
+            Accounts Receivable,
+            <br />
+            under control.
+          </h2>
+          <p className="mt-4 max-w-sm text-sm text-white/70">
+            Track every invoice, chase overdue customers, and see your cashflow
+            week by week — all in one place.
+          </p>
+          <ul className="mt-8 space-y-3 text-sm text-white/90">
+            {HIGHLIGHTS.map((line) => (
+              <li key={line} className="flex items-center gap-3">
+                <CheckCircle2 className="h-4 w-4 flex-none text-white" />
+                {line}
+              </li>
+            ))}
+          </ul>
+        </div>
 
-          <button
-            type="submit"
-            className="mt-2 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-          >
-            Sign In
-          </button>
-        </form>
+        <p className="relative text-xs text-white/50">© Verve Advisory · AR Manager</p>
+      </aside>
 
-        <p className="mt-6 text-xs text-slate-400">Demo logins: admin / admin123, finance / finance123</p>
-      </div>
+      {/* Form panel */}
+      <main className="flex flex-1 items-center justify-center bg-slate-50 p-6">
+        <div className="w-full max-w-sm">
+          <div className="mb-8 flex items-center gap-2 lg:hidden">
+            <Image src="/verve-logo.png" alt="Verve" width={110} height={54} className="h-9 w-auto" priority />
+          </div>
+
+          <h1 className="text-2xl font-bold text-slate-900">Welcome back</h1>
+          <p className="mt-1 text-sm text-slate-500">Sign in to your AR Manager account.</p>
+
+          <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
+            <div>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                Username
+              </label>
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                  <Mail className="h-4 w-4" />
+                </span>
+                <input
+                  className={`${inputClass} w-full pl-10`}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="admin"
+                  autoFocus
+                  autoComplete="username"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+                Password
+              </label>
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                  <Lock className="h-4 w-4" />
+                </span>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  className={`${inputClass} w-full pl-10 pr-10`}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={busy}
+              className="mt-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-brand/30 transition-colors hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {busy ? "Signing in…" : "Sign In"}
+            </button>
+          </form>
+
+          <p className="mt-6 text-center text-xs text-slate-400">
+            Demo logins: admin / admin123, finance / finance123
+          </p>
+        </div>
+      </main>
     </div>
   );
 }
