@@ -15,7 +15,7 @@ import {
   groupCustomerRows,
   importCustomers,
 } from "@/lib/csvImportCustomers";
-import type { Customer } from "@/lib/types";
+import type { Customer, CustomerStatus } from "@/lib/types";
 
 type CustomerFormState = {
   code: string;
@@ -59,6 +59,7 @@ export default function CustomerMasterPage() {
   const [form, setForm] = useState<CustomerFormState>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
   async function loadCustomers() {
     if (!supabase) {
@@ -95,6 +96,35 @@ export default function CustomerMasterPage() {
   function resetForm() {
     setForm(emptyForm);
     setEditingId(null);
+    setShowForm(false);
+    setError("");
+  }
+
+  function clearForm() {
+    setForm(emptyForm);
+    setError("");
+  }
+
+  async function toggleStatus(customer: Customer) {
+    if (!supabase) return;
+    const nextStatus: CustomerStatus = customer.status === "active" ? "inactive" : "active";
+
+    setCustomers((prev) =>
+      prev.map((c) => (c.id === customer.id ? { ...c, status: nextStatus } : c))
+    );
+
+    const { error: supabaseError } = await supabase
+      .from("customers")
+      .update({ status: nextStatus })
+      .eq("id", customer.id);
+
+    if (supabaseError) {
+      setCustomers((prev) =>
+        prev.map((c) => (c.id === customer.id ? { ...c, status: customer.status } : c))
+      );
+      setError(supabaseError.message);
+      toast.error(supabaseError.message);
+    }
   }
 
   function startEdit(customer: Customer) {
@@ -112,6 +142,7 @@ export default function CustomerMasterPage() {
       credit_days: String(customer.credit_days ?? 0),
       opening_balance: String(customer.opening_balance ?? 0),
     });
+    setShowForm(true);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -165,10 +196,15 @@ export default function CustomerMasterPage() {
         subtitle="A simple list of customers with add and edit actions for the AR team."
         action={
           <button
-            onClick={resetForm}
+            type="button"
+            onClick={() => {
+              setForm(emptyForm);
+              setEditingId(null);
+              setShowForm((v) => !v);
+            }}
             className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90"
           >
-            {editingId ? "Cancel edit" : "Add Customer"}
+            + Add Customer
           </button>
         }
       />
@@ -179,115 +215,82 @@ export default function CustomerMasterPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
-        <div className="rounded-xl border border-slate-200 bg-white p-6">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Customer list
+      {showForm && (
+        <section className="mb-6 rounded-xl border border-slate-200 bg-white p-6">
+          <h3 className="mb-4 text-lg font-semibold text-slate-900">
+            {editingId ? "Edit Customer" : "Add Customer"}
           </h3>
-          {loading ? (
-            <div className="mt-4">
-              <TableSkeleton rows={6} />
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <FormField label="Code">
+                <input
+                  className={inputClass}
+                  value={form.code}
+                  onChange={(e) => setForm((prev) => ({ ...prev, code: e.target.value }))}
+                  required
+                />
+              </FormField>
+              <FormField label="Name">
+                <input
+                  className={inputClass}
+                  value={form.name}
+                  onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                  required
+                />
+              </FormField>
+              <FormField label="GSTIN">
+                <input
+                  className={inputClass}
+                  value={form.gstin}
+                  onChange={(e) => setForm((prev) => ({ ...prev, gstin: e.target.value }))}
+                />
+              </FormField>
             </div>
-          ) : (
-            <div className="mt-4">
-              <DataTable
-                columns={[
-                  { key: "code", header: "Code" },
-                  { key: "name", header: "Name" },
-                  { key: "contact_person", header: "Contact" },
-                  { key: "credit_days", header: "Credit days" },
-                  {
-                    key: "credit_limit",
-                    header: "Credit limit",
-                    render: (row) => `₹${Number(row.credit_limit ?? 0).toLocaleString()}`,
-                  },
-                  {
-                    key: "id",
-                    header: "Action",
-                    render: (row) => (
-                      <button
-                        onClick={() => startEdit(row)}
-                        className="text-sm font-medium text-brand hover:underline"
-                      >
-                        Edit
-                      </button>
-                    ),
-                  },
-                ]}
-                rows={customers}
-                empty="No customers found yet."
-              />
-            </div>
-          )}
-        </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-6">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            {editingId ? "Edit customer" : "Add Customer"}
-          </h3>
-          <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
-            <FormField label="Code">
-              <input
-                className={inputClass}
-                value={form.code}
-                onChange={(e) => setForm((prev) => ({ ...prev, code: e.target.value }))}
-                required
-              />
-            </FormField>
-            <FormField label="Name">
-              <input
-                className={inputClass}
-                value={form.name}
-                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                required
-              />
-            </FormField>
-            <FormField label="GSTIN">
-              <input
-                className={inputClass}
-                value={form.gstin}
-                onChange={(e) => setForm((prev) => ({ ...prev, gstin: e.target.value }))}
-              />
-            </FormField>
-            <FormField label="PAN">
-              <input
-                className={inputClass}
-                value={form.pan}
-                onChange={(e) => setForm((prev) => ({ ...prev, pan: e.target.value }))}
-              />
-            </FormField>
-            <FormField label="Contact person">
-              <input
-                className={inputClass}
-                value={form.contact_person}
-                onChange={(e) => setForm((prev) => ({ ...prev, contact_person: e.target.value }))}
-              />
-            </FormField>
-            <FormField label="Email">
-              <input
-                type="email"
-                className={inputClass}
-                value={form.email}
-                onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
-              />
-            </FormField>
-            <FormField label="Phone">
-              <input
-                className={inputClass}
-                value={form.phone}
-                onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
-              />
-            </FormField>
-            <FormField label="Address">
-              <textarea
-                className={inputClass}
-                rows={3}
-                value={form.address}
-                onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
-              />
-            </FormField>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <FormField label="PAN">
+                <input
+                  className={inputClass}
+                  value={form.pan}
+                  onChange={(e) => setForm((prev) => ({ ...prev, pan: e.target.value }))}
+                />
+              </FormField>
+              <FormField label="Contact Person">
+                <input
+                  className={inputClass}
+                  value={form.contact_person}
+                  onChange={(e) => setForm((prev) => ({ ...prev, contact_person: e.target.value }))}
+                />
+              </FormField>
+              <FormField label="Email">
+                <input
+                  type="email"
+                  className={inputClass}
+                  value={form.email}
+                  onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+                />
+              </FormField>
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Credit days">
+              <FormField label="Phone">
+                <input
+                  className={inputClass}
+                  value={form.phone}
+                  onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+                />
+              </FormField>
+              <FormField label="Address">
+                <input
+                  className={inputClass}
+                  value={form.address}
+                  onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
+                />
+              </FormField>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <FormField label="Credit Days">
                 <input
                   type="number"
                   min="0"
@@ -298,7 +301,7 @@ export default function CustomerMasterPage() {
                   }
                 />
               </FormField>
-              <FormField label="Credit limit">
+              <FormField label="Credit Limit (₹)">
                 <input
                   type="number"
                   min="0"
@@ -309,37 +312,105 @@ export default function CustomerMasterPage() {
                   }
                 />
               </FormField>
+              <FormField label="Opening Balance (₹)">
+                <input
+                  type="number"
+                  min="0"
+                  className={inputClass}
+                  value={form.opening_balance}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, opening_balance: sanitizeNonNegative(e.target.value) }))
+                  }
+                />
+              </FormField>
             </div>
-            <FormField label="Opening balance">
-              <input
-                type="number"
-                min="0"
-                className={inputClass}
-                value={form.opening_balance}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, opening_balance: sanitizeNonNegative(e.target.value) }))
-                }
-              />
-            </FormField>
+
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex gap-3">
               <button
                 type="submit"
                 disabled={submitting}
-                className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+                className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {submitting ? "Saving…" : editingId ? "Save changes" : "Create Customer"}
+              </button>
+              <button
+                type="button"
+                onClick={clearForm}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Clear
               </button>
               <button
                 type="button"
                 onClick={resetForm}
                 className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
-                Clear
+                Cancel
               </button>
             </div>
           </form>
-        </div>
+        </section>
+      )}
+
+      <div className="rounded-xl border border-slate-200 bg-white p-6">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Customer list
+        </h3>
+        {loading ? (
+          <div className="mt-4">
+            <TableSkeleton rows={6} />
+          </div>
+        ) : (
+          <div className="mt-4">
+            <DataTable
+              columns={[
+                { key: "code", header: "Code" },
+                { key: "name", header: "Name" },
+                { key: "contact_person", header: "Contact" },
+                { key: "credit_days", header: "Credit days" },
+                {
+                  key: "credit_limit",
+                  header: "Credit limit",
+                  render: (row) => `₹${Number(row.credit_limit ?? 0).toLocaleString()}`,
+                },
+                {
+                  key: "id",
+                  header: "Action",
+                  render: (row) => (
+                    <button
+                      type="button"
+                      onClick={() => startEdit(row)}
+                      className="text-sm font-medium text-brand hover:underline"
+                    >
+                      Edit
+                    </button>
+                  ),
+                },
+                {
+                  key: "status",
+                  header: "Status",
+                  render: (row) => (
+                    <button
+                      type="button"
+                      onClick={() => toggleStatus(row)}
+                      title="Click to toggle Active / Inactive"
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        row.status === "inactive"
+                          ? "bg-red-50 text-red-600 hover:bg-red-100"
+                          : "bg-green-50 text-green-700 hover:bg-green-100"
+                      }`}
+                    >
+                      {row.status === "inactive" ? "Inactive" : "Active"}
+                    </button>
+                  ),
+                },
+              ]}
+              rows={customers}
+              empty="No customers found yet."
+            />
+          </div>
+        )}
       </div>
 
       <div className="mt-6">

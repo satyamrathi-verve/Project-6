@@ -12,6 +12,9 @@ export interface Company {
   phone: string | null;
 }
 
+export type ActiveStatus = "active" | "inactive";
+export type CustomerStatus = ActiveStatus;
+
 export interface Customer {
   id: string;
   code: string;
@@ -25,6 +28,7 @@ export interface Customer {
   credit_limit: number;
   credit_days: number;
   opening_balance: number;
+  status: CustomerStatus;
   created_at: string;
 }
 
@@ -34,6 +38,7 @@ export interface GLAccount {
   name: string;
   type: "asset" | "liability" | "income" | "expense";
   parent_group: string | null;
+  status: ActiveStatus;
 }
 
 export type InvoiceStatus = "open" | "partial" | "paid" | "overdue";
