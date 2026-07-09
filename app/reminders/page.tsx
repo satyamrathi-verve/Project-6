@@ -67,6 +67,7 @@ export default function AutoEmailShootPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [customerFilter, setCustomerFilter] = useState("");
   const [invoiceNoFilter, setInvoiceNoFilter] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     async function loadData() {
@@ -146,12 +147,45 @@ export default function AutoEmailShootPage() {
     });
   }, [overdueInvoices, customerFilter, invoiceNoFilter]);
 
+  // Selecting "all" by default when the filter changes keeps the common case
+  // (send to everyone in view) a single click, while still letting the
+  // collector uncheck specific invoices before sending.
+  useEffect(() => {
+    setSelectedIds(new Set(filteredInvoices.map((invoice) => invoice.id)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerFilter, invoiceNoFilter, overdueInvoices]);
+
+  const selectedInvoices = useMemo(
+    () => filteredInvoices.filter((invoice) => selectedIds.has(invoice.id)),
+    [filteredInvoices, selectedIds]
+  );
+
+  const allSelected = filteredInvoices.length > 0 && filteredInvoices.every((invoice) => selectedIds.has(invoice.id));
+
+  function toggleSelectAll() {
+    setSelectedIds(allSelected ? new Set() : new Set(filteredInvoices.map((invoice) => invoice.id)));
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
   const totals = useMemo(
     () => ({
       count: filteredInvoices.length,
       outstanding: filteredInvoices.reduce((sum, invoice) => sum + invoice.balance_due, 0),
+      selectedCount: selectedInvoices.length,
+      selectedOutstanding: selectedInvoices.reduce((sum, invoice) => sum + invoice.balance_due, 0),
     }),
-    [filteredInvoices]
+    [filteredInvoices, selectedInvoices]
   );
 
   const remindersByInvoiceId = useMemo(() => {
@@ -181,11 +215,11 @@ export default function AutoEmailShootPage() {
   }, [log, invoiceNoFilter, customerFilter]);
 
   async function sendReminders() {
-    if (!supabase || !selectedTemplate) return;
+    if (!supabase || !selectedTemplate || selectedInvoices.length === 0) return;
     setSending(true);
     setMessage(null);
 
-    const logRows = filteredInvoices.map((invoice) => {
+    const logRows = selectedInvoices.map((invoice) => {
       const customerName = invoice.customers?.name ?? "Customer";
       const daysOverdue = invoice.due_date ? String(Math.max(0, Math.floor((Date.now() - new Date(invoice.due_date).getTime()) / 86400000))) : "0";
       const data = {
@@ -227,6 +261,26 @@ export default function AutoEmailShootPage() {
   }
 
   const columns: Column<OverdueRow>[] = [
+    {
+      key: "select",
+      header: (
+        <input
+          type="checkbox"
+          checked={allSelected}
+          onChange={toggleSelectAll}
+          aria-label="Select all filtered invoices"
+        />
+      ),
+      className: "w-10",
+      render: (row) => (
+        <input
+          type="checkbox"
+          checked={selectedIds.has(row.id)}
+          onChange={() => toggleSelect(row.id)}
+          aria-label={`Select invoice ${row.invoice_no}`}
+        />
+      ),
+    },
     { key: "invoice_no", header: "Invoice #" },
     {
       key: "customer",
@@ -313,16 +367,16 @@ export default function AutoEmailShootPage() {
                 <div>
                   <h3 className="text-lg font-semibold text-slate-900">Overdue invoices</h3>
                   <p className="text-sm text-slate-500">
-                    Review overdue invoices and send reminders for each one.
+                    Check the invoices you want to remind, then send.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={sendReminders}
-                  disabled={sending || loading || !selectedTemplate || filteredInvoices.length === 0}
+                  disabled={sending || loading || !selectedTemplate || selectedInvoices.length === 0}
                   className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand/90 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {sending ? "Sending..." : "Send reminders"}
+                  {sending ? "Sending..." : `Send reminders (${selectedInvoices.length})`}
                 </button>
               </div>
 
@@ -382,6 +436,14 @@ export default function AutoEmailShootPage() {
                   <div className="flex items-center justify-between">
                     <span>Total outstanding</span>
                     <span className="font-semibold">{money.format(totals.outstanding)}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                    <span>Selected to send</span>
+                    <span className="font-semibold">{totals.selectedCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Selected amount</span>
+                    <span className="font-semibold">{money.format(totals.selectedOutstanding)}</span>
                   </div>
                 </div>
               </section>

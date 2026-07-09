@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 
 export interface Column<T> {
   key: string;
-  header: string;
+  header: ReactNode;
   /** Optional custom cell; defaults to String(row[key]). */
   render?: (row: T) => ReactNode;
   className?: string;
