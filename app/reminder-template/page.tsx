@@ -6,9 +6,12 @@ import { FormField, inputClass } from "@/components/FormField";
 import { NotConfigured } from "@/components/NotConfigured";
 import { useToast } from "@/components/Toast";
 import { isConfigured, supabase } from "@/lib/supabase";
-import { money, formatDate } from "@/lib/format";
-import { outstandingOf, type InvoiceWithAllocations } from "@/lib/receivables";
-import type { ReminderTemplate, Company } from "@/lib/types";
+
+type TemplateRecord = {
+  id?: string | null;
+  subject?: string | null;
+  body?: string | null;
+};
 
 type OverdueInvoice = InvoiceWithAllocations & { customers?: { name: string } | null };
 
@@ -20,16 +23,18 @@ const PLACEHOLDERS = [
   "{invoice_date}",
   "{due_date}",
   "{company_name}",
+  "{payment_link}",
 ];
 
 const SAMPLE_VALUES: Record<string, string> = {
   customer: "ABC Industries",
-  amount: "₹25,400",
-  days_overdue: "18",
+  contact_person: "Asha Patel",
+  customer_email: "accounts@abcindustries.com",
   invoice_no: "INV-10025",
   invoice_date: "05 Jul 2026",
   due_date: "20 Jul 2026",
   company_name: "Verve Advisory",
+  payment_link: "https://example.com/pay",
 };
 
 function renderTemplate(text: string, values: Record<string, string>) {
@@ -37,19 +42,16 @@ function renderTemplate(text: string, values: Record<string, string>) {
 }
 
 export default function ReminderTemplatePage() {
-  const [templates, setTemplates] = useState<ReminderTemplate[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [initialSubject, setInitialSubject] = useState("");
+  const [initialBody, setInitialBody] = useState("");
+  const [templateId, setTemplateId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [errors, setErrors] = useState<{ name?: string; subject?: string; body?: string }>({});
-  const [overdueInvoices, setOverdueInvoices] = useState<OverdueInvoice[]>([]);
-  const [company, setCompany] = useState<Company | null>(null);
-  const [previewInvoiceId, setPreviewInvoiceId] = useState("");
-  const toast = useToast();
+  const [toast, setToast] = useState<ToastState>(null);
+  const [errors, setErrors] = useState<{ subject?: string; body?: string }>({});
 
   const subjectRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -79,75 +81,53 @@ export default function ReminderTemplatePage() {
     }
     loadTemplates();
 
-    async function loadPreviewData() {
-      if (!supabase) return;
-      const [invoiceRes, companyRes] = await Promise.all([
-        supabase
-          .from("invoices")
-          .select("*, customers(name), receipt_allocations(amount)")
-          .eq("status", "overdue")
-          .order("due_date", { ascending: true }),
-        supabase.from("company").select("*").limit(1).maybeSingle(),
-      ]);
+    async function loadTemplate() {
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
 
-      if (!invoiceRes.error && invoiceRes.data) {
-        setOverdueInvoices(invoiceRes.data as OverdueInvoice[]);
+      const client = supabase;
+      const tryTable = async (table: string) => {
+        return client.from(table).select("id, subject, body").order("id", { ascending: true }).limit(1).maybeSingle();
+      };
+
+      const firstAttempt = await tryTable("templates");
+      let result = firstAttempt;
+
+      if (firstAttempt.error) {
+        result = await tryTable("reminder_templates");
       }
-      if (!companyRes.error && companyRes.data) {
-        setCompany(companyRes.data as Company);
+
+      if (!result.error && result.data) {
+        const data = result.data as TemplateRecord;
+        setTemplateId(data.id ?? null);
+        setSubject(data.subject ?? "");
+        setBody(data.body ?? "");
+        setInitialSubject(data.subject ?? "");
+        setInitialBody(data.body ?? "");
+      } else {
+        setTemplateId(null);
+        setSubject("");
+        setBody("");
+        setInitialSubject("");
+        setInitialBody("");
       }
+
+      setLoading(false);
     }
-    loadPreviewData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    loadTemplate();
   }, []);
 
-  function selectTemplate(t: ReminderTemplate | null) {
-    setSelectedId(t?.id ?? null);
-    setName(t?.name ?? "");
-    setSubject(t?.subject ?? "");
-    setBody(t?.body ?? "");
-    setErrors({});
-  }
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
-  function handleNewTemplate() {
-    setSelectedId(null);
-    setName("");
-    setSubject("");
-    setBody("");
-    setErrors({});
-  }
-
-  const previewInvoice = useMemo(
-    () => overdueInvoices.find((inv) => inv.id === previewInvoiceId) ?? null,
-    [overdueInvoices, previewInvoiceId]
-  );
-
-  const previewValues = useMemo(() => {
-    if (!previewInvoice) return SAMPLE_VALUES;
-    const days = Math.max(0, Math.floor((Date.now() - new Date(previewInvoice.due_date).getTime()) / 86400000));
-    return {
-      customer: previewInvoice.customers?.name ?? "Customer",
-      amount: money.format(outstandingOf(previewInvoice)),
-      days_overdue: String(days),
-      invoice_no: previewInvoice.invoice_no,
-      invoice_date: formatDate(previewInvoice.invoice_date),
-      due_date: formatDate(previewInvoice.due_date),
-      company_name: company?.name ?? SAMPLE_VALUES.company_name,
-    };
-  }, [previewInvoice, company]);
-
-  const previewSubject = useMemo(
-    () => renderTemplate(subject || "Reminder: your invoice is overdue", previewValues),
-    [subject, previewValues]
-  );
-  const previewBody = useMemo(
-    () =>
-      renderTemplate(
-        body || "Hello {customer},\n\nYour invoice {invoice_no} for {amount} is now {days_overdue} days overdue. Please review and settle it at your earliest convenience.\n\nRegards,\n{company_name}",
-        previewValues
-      ),
-    [body, previewValues]
-  );
+  const previewSubject = useMemo(() => renderTemplate(subject || "Reminder: your invoice is overdue"), [subject]);
+  const previewBody = useMemo(() => renderTemplate(body || "Hello {customer},\n\nYour invoice {invoice_no} for {amount} is now {days_overdue} days overdue. Please review and settle it at your earliest convenience.\n\nRegards,\n{company_name}"), [body]);
 
   function insertPlaceholder(placeholder: string) {
     const active = document.activeElement;
@@ -176,11 +156,11 @@ export default function ReminderTemplatePage() {
         input.setSelectionRange(start + placeholder.length, start + placeholder.length);
       });
     } else {
-      const input = subjectRef.current;
+      const input = bodyRef.current ?? subjectRef.current;
       if (!input) return;
-      const start = subject.length;
-      const nextValue = `${subject}${placeholder}`;
-      setSubject(nextValue);
+      const start = body.length;
+      const nextValue = `${body}${placeholder}`;
+      setBody(nextValue);
       requestAnimationFrame(() => {
         input.focus();
         input.setSelectionRange(start + placeholder.length, start + placeholder.length);
@@ -189,19 +169,16 @@ export default function ReminderTemplatePage() {
   }
 
   function validate() {
-    const nextErrors: { name?: string; subject?: string; body?: string } = {};
-    if (!name.trim()) nextErrors.name = "Name is required.";
+    const nextErrors: { subject?: string; body?: string } = {};
     if (!subject.trim()) nextErrors.subject = "Subject is required.";
     if (!body.trim()) nextErrors.body = "Body is required.";
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   }
 
-  async function handleSave(event: FormEvent) {
-    event.preventDefault();
-
+  async function saveTemplate(mode: "update" | "new") {
     if (!supabase || !isConfigured || !validate()) {
-      toast.error("Please fill in the name, subject, and body.");
+      setToast({ type: "error", message: "Please fill in both the subject and body." });
       return;
     }
 
@@ -209,78 +186,59 @@ export default function ReminderTemplatePage() {
     setSaving(true);
 
     const payload = {
-      name: name.trim(),
       subject: subject.trim(),
       body: body.trim(),
     };
 
-    const result = selectedId
-      ? await client.from("reminder_templates").update(payload).eq("id", selectedId).select("id").single()
-      : await client.from("reminder_templates").insert(payload).select("id").single();
+    const saveToTable = async (table: string) => {
+      if (templateId) {
+        return client.from(table).update(payload).eq("id", templateId).select("id").single();
+      }
+      return client.from(table).insert(payload).select("id").single();
+    };
+
+    let result = await saveToTable("templates");
+    if (result.error) {
+      result = await saveToTable("reminder_templates");
+    }
 
     if (result.error) {
       toast.error("We could not save the template. Please try again.");
     } else {
-      toast.success("Reminder template saved successfully.");
-      await loadTemplates(result.data?.id ?? selectedId);
+      setTemplateId(result.data?.id ?? templateId);
+      setInitialSubject(subject.trim());
+      setInitialBody(body.trim());
+      setToast({ type: "success", message: "Reminder template saved successfully." });
     }
 
     setSaving(false);
   }
 
   function handleReset() {
-    const current = templates.find((t) => t.id === selectedId) ?? null;
-    selectTemplate(current);
+    setSubject(initialSubject);
+    setBody(initialBody);
+    setErrors({});
+    setToast(null);
   }
 
   return (
     <>
       <PageHeader
         title="Reminder Template"
-        subtitle="Configure the reminder emails sent during AR follow-ups."
+        subtitle="Configure the reminder email sent during AR follow-ups."
       />
 
       {!isConfigured && <NotConfigured />}
 
       {isConfigured && (
         <div className="space-y-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-center gap-2">
-              {templates.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => selectTemplate(t)}
-                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                    t.id === selectedId
-                      ? "bg-brand text-white"
-                      : "border border-slate-200 text-slate-700 hover:border-brand hover:text-brand"
-                  }`}
-                >
-                  {t.name}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={handleNewTemplate}
-                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
-                  selectedId === null && !loading
-                    ? "border-brand bg-brand/10 text-brand"
-                    : "border-dashed border-slate-300 text-slate-500 hover:border-brand hover:text-brand"
-                }`}
-              >
-                + New template
-              </button>
-            </div>
-          </div>
-
           <div className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
             <form onSubmit={handleSave} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900">Email template</h3>
+                  <h3 className="text-lg font-semibold text-slate-900">Reminder Template Studio</h3>
                   <p className="mt-1 text-sm text-slate-500">
-                    Create a professional reminder message for overdue invoices.
+                    Create and manage reminders for overdue invoices with a polished ERP-ready experience.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -299,6 +257,21 @@ export default function ReminderTemplatePage() {
                     Preview
                   </button>
                   <button
+                    type="button"
+                    onClick={() => setShowTestModal(true)}
+                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Send Test Email
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saving || loading}
+                    onClick={() => void saveTemplate("new")}
+                    className="rounded-lg border border-brand/30 bg-brand/10 px-4 py-2 text-sm font-semibold text-brand transition hover:bg-brand/20 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {saving ? "Saving..." : "Save as New"}
+                  </button>
+                  <button
                     type="submit"
                     disabled={saving || loading}
                     className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand/90 disabled:cursor-not-allowed disabled:bg-slate-300"
@@ -315,19 +288,6 @@ export default function ReminderTemplatePage() {
                 </div>
               ) : (
                 <div className="space-y-5">
-                  <FormField label="Template Name">
-                    <input
-                      className={inputClass}
-                      value={name}
-                      onChange={(event) => {
-                        setName(event.target.value);
-                        if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
-                      }}
-                      placeholder="e.g. First reminder, Final notice"
-                    />
-                    {errors.name && <p className="text-sm text-rose-600">{errors.name}</p>}
-                  </FormField>
-
                   <FormField label="Email Subject">
                     <input
                       ref={subjectRef}
@@ -342,61 +302,95 @@ export default function ReminderTemplatePage() {
                     {errors.subject && <p className="text-sm text-rose-600">{errors.subject}</p>}
                   </FormField>
 
-                  <FormField label="Email Body">
-                    <textarea
-                      ref={bodyRef}
-                      className={`${inputClass} min-h-[360px] resize-y`}
-                      value={body}
-                      onChange={(event) => {
-                        setBody(event.target.value);
-                        if (errors.body) setErrors((prev) => ({ ...prev, body: undefined }));
-                      }}
-                      placeholder="Hello {customer},\n\nWe are following up on invoice {invoice_no} for {amount}..."
-                    />
-                    {errors.body && <p className="text-sm text-rose-600">{errors.body}</p>}
-                  </FormField>
+                      <FormField label="Email Body">
+                        <textarea
+                          ref={bodyRef}
+                          className={`${inputClass} min-h-[360px] resize-y ${errors.body ? "border-rose-400" : ""}`}
+                          value={body}
+                          onChange={(event) => {
+                            setBody(event.target.value);
+                            if (errors.body) setErrors((prev) => ({ ...prev, body: undefined }));
+                          }}
+                          placeholder="Hello {customer},\n\nWe are following up on invoice {invoice_no} for {invoice_total}..."
+                        />
+                        {errors.body && <p className="text-sm text-rose-600">{errors.body}</p>}
+                      </FormField>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+                    <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Email Settings</h4>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      {[
+                        { key: "includeInvoicePdf", label: "Include Invoice PDF", checked: includeInvoicePdf, setter: setIncludeInvoicePdf },
+                        { key: "includeCustomerStatement", label: "Include Customer Statement", checked: includeCustomerStatement, setter: setIncludeCustomerStatement },
+                        { key: "stopAfterPayment", label: "Stop reminders after payment", checked: stopAfterPayment, setter: setStopAfterPayment },
+                        { key: "autoEmail", label: "Enable Auto Email Shoot", checked: autoEmail, setter: setAutoEmail },
+                      ].map(({ key, label, checked, setter }) => (
+                        <label key={key} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3">
+                          <span className="text-sm font-medium text-slate-700">{label}</span>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(checked)}
+                            onChange={(event) => setter(event.target.checked)}
+                            className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
             </form>
 
             <div className="space-y-6">
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-slate-900">Available Placeholders</h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  Click any chip to insert it at the cursor position.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {PLACEHOLDERS.map((placeholder) => (
-                    <button
-                      key={placeholder}
-                      type="button"
-                      onClick={() => insertPlaceholder(placeholder)}
-                      className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700 transition hover:border-brand hover:bg-brand/10 hover:text-brand"
-                    >
-                      {placeholder}
-                    </button>
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-900">Placeholders</h3>
+                <p className="mt-1 text-sm text-slate-500">Group your tokens by context and insert them at the cursor instantly.</p>
+                <div className="mt-4 space-y-4">
+                  {PLACEHOLDER_GROUPS.map((group) => (
+                    <div key={group.title}>
+                      <p className="text-sm font-semibold text-slate-700">{group.title}</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {group.placeholders.map((placeholder) => (
+                          <button
+                            key={placeholder}
+                            type="button"
+                            onClick={() => insertPlaceholder(placeholder)}
+                            className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700 transition hover:border-brand hover:bg-brand/10 hover:text-brand"
+                          >
+                            {placeholder}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   ))}
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-900">Live Email Preview</h3>
+                <p className="mt-1 text-sm text-slate-500">This updates instantly with sample AR values as you type.</p>
+                <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                  <div className="border-b border-slate-200 bg-white px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Preview</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">{previewSubject}</p>
+                  </div>
+                  <div className="space-y-3 p-4 text-sm text-slate-700">
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">To</p>
+                      <p className="mt-1">{SAMPLE_VALUES.customer} · {SAMPLE_VALUES.customer_email}</p>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Message</p>
+                      <p className="mt-2 whitespace-pre-wrap">{previewBody}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="text-lg font-semibold text-slate-900">Quick Preview</h3>
-                <div className="mt-3">
-                  <FormField label="Preview with">
-                    <select
-                      value={previewInvoiceId}
-                      onChange={(event) => setPreviewInvoiceId(event.target.value)}
-                      className={inputClass}
-                    >
-                      <option value="">Sample data</option>
-                      {overdueInvoices.map((inv) => (
-                        <option key={inv.id} value={inv.id}>
-                          {inv.invoice_no} — {inv.customers?.name ?? "Customer"}
-                        </option>
-                      ))}
-                    </select>
-                  </FormField>
-                </div>
                 <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-sm font-semibold text-slate-900">Subject</p>
                   <p className="mt-1 text-sm text-slate-700">{previewSubject}</p>
@@ -408,8 +402,8 @@ export default function ReminderTemplatePage() {
           </div>
 
           {showPreview && (
-            <div className="fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-slate-900/60 p-4">
-              <div className="w-full max-w-2xl animate-scale-in rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+              <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900">Email Preview</h3>
@@ -427,11 +421,34 @@ export default function ReminderTemplatePage() {
                     Close
                   </button>
                 </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-                  <p className="text-sm font-semibold text-slate-900">Subject</p>
-                  <p className="mt-1 text-sm text-slate-700">{previewSubject}</p>
-                  <p className="mt-4 text-sm font-semibold text-slate-900">Body</p>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{previewBody}</p>
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                  <div className="border-b border-slate-200 bg-white px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Subject</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">{previewSubject}</p>
+                  </div>
+                  <div className="p-4 text-sm text-slate-700">
+                    <p className="whitespace-pre-wrap">{previewBody}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showTestModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+              <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+                <h3 className="text-lg font-semibold text-slate-900">Test Email</h3>
+                <p className="mt-2 text-sm text-slate-600">
+                  Test email functionality will be connected later.
+                </p>
+                <div className="mt-6 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowTestModal(false)}
+                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    Close
+                  </button>
                 </div>
               </div>
             </div>
