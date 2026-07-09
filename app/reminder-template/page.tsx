@@ -6,7 +6,11 @@ import { FormField, inputClass } from "@/components/FormField";
 import { NotConfigured } from "@/components/NotConfigured";
 import { useToast } from "@/components/Toast";
 import { isConfigured, supabase } from "@/lib/supabase";
-import type { ReminderTemplate } from "@/lib/types";
+import { money, formatDate } from "@/lib/format";
+import { outstandingOf, type InvoiceWithAllocations } from "@/lib/receivables";
+import type { ReminderTemplate, Company } from "@/lib/types";
+
+type OverdueInvoice = InvoiceWithAllocations & { customers?: { name: string } | null };
 
 const PLACEHOLDERS = [
   "{customer}",
@@ -28,8 +32,8 @@ const SAMPLE_VALUES: Record<string, string> = {
   company_name: "Verve Advisory",
 };
 
-function renderTemplate(text: string) {
-  return text.replace(/\{([^{}]+)\}/g, (match, key) => SAMPLE_VALUES[key] ?? match);
+function renderTemplate(text: string, values: Record<string, string>) {
+  return text.replace(/\{([^{}]+)\}/g, (match, key) => values[key] ?? match);
 }
 
 export default function ReminderTemplatePage() {
@@ -42,6 +46,9 @@ export default function ReminderTemplatePage() {
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; subject?: string; body?: string }>({});
+  const [overdueInvoices, setOverdueInvoices] = useState<OverdueInvoice[]>([]);
+  const [company, setCompany] = useState<Company | null>(null);
+  const [previewInvoiceId, setPreviewInvoiceId] = useState("");
   const toast = useToast();
 
   const subjectRef = useRef<HTMLInputElement>(null);
@@ -71,6 +78,26 @@ export default function ReminderTemplatePage() {
       return;
     }
     loadTemplates();
+
+    async function loadPreviewData() {
+      if (!supabase) return;
+      const [invoiceRes, companyRes] = await Promise.all([
+        supabase
+          .from("invoices")
+          .select("*, customers(name), receipt_allocations(amount)")
+          .eq("status", "overdue")
+          .order("due_date", { ascending: true }),
+        supabase.from("company").select("*").limit(1).maybeSingle(),
+      ]);
+
+      if (!invoiceRes.error && invoiceRes.data) {
+        setOverdueInvoices(invoiceRes.data as OverdueInvoice[]);
+      }
+      if (!companyRes.error && companyRes.data) {
+        setCompany(companyRes.data as Company);
+      }
+    }
+    loadPreviewData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -90,8 +117,37 @@ export default function ReminderTemplatePage() {
     setErrors({});
   }
 
-  const previewSubject = useMemo(() => renderTemplate(subject || "Reminder: your invoice is overdue"), [subject]);
-  const previewBody = useMemo(() => renderTemplate(body || "Hello {customer},\n\nYour invoice {invoice_no} for {amount} is now {days_overdue} days overdue. Please review and settle it at your earliest convenience.\n\nRegards,\n{company_name}"), [body]);
+  const previewInvoice = useMemo(
+    () => overdueInvoices.find((inv) => inv.id === previewInvoiceId) ?? null,
+    [overdueInvoices, previewInvoiceId]
+  );
+
+  const previewValues = useMemo(() => {
+    if (!previewInvoice) return SAMPLE_VALUES;
+    const days = Math.max(0, Math.floor((Date.now() - new Date(previewInvoice.due_date).getTime()) / 86400000));
+    return {
+      customer: previewInvoice.customers?.name ?? "Customer",
+      amount: money.format(outstandingOf(previewInvoice)),
+      days_overdue: String(days),
+      invoice_no: previewInvoice.invoice_no,
+      invoice_date: formatDate(previewInvoice.invoice_date),
+      due_date: formatDate(previewInvoice.due_date),
+      company_name: company?.name ?? SAMPLE_VALUES.company_name,
+    };
+  }, [previewInvoice, company]);
+
+  const previewSubject = useMemo(
+    () => renderTemplate(subject || "Reminder: your invoice is overdue", previewValues),
+    [subject, previewValues]
+  );
+  const previewBody = useMemo(
+    () =>
+      renderTemplate(
+        body || "Hello {customer},\n\nYour invoice {invoice_no} for {amount} is now {days_overdue} days overdue. Please review and settle it at your earliest convenience.\n\nRegards,\n{company_name}",
+        previewValues
+      ),
+    [body, previewValues]
+  );
 
   function insertPlaceholder(placeholder: string) {
     const active = document.activeElement;
@@ -325,6 +381,22 @@ export default function ReminderTemplatePage() {
 
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="text-lg font-semibold text-slate-900">Quick Preview</h3>
+                <div className="mt-3">
+                  <FormField label="Preview with">
+                    <select
+                      value={previewInvoiceId}
+                      onChange={(event) => setPreviewInvoiceId(event.target.value)}
+                      className={inputClass}
+                    >
+                      <option value="">Sample data</option>
+                      {overdueInvoices.map((inv) => (
+                        <option key={inv.id} value={inv.id}>
+                          {inv.invoice_no} — {inv.customers?.name ?? "Customer"}
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
+                </div>
                 <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-sm font-semibold text-slate-900">Subject</p>
                   <p className="mt-1 text-sm text-slate-700">{previewSubject}</p>
@@ -341,7 +413,11 @@ export default function ReminderTemplatePage() {
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900">Email Preview</h3>
-                    <p className="text-sm text-slate-500">Rendered with sample customer and invoice values.</p>
+                    <p className="text-sm text-slate-500">
+                      {previewInvoice
+                        ? `Rendered with real values from ${previewInvoice.invoice_no}.`
+                        : "Rendered with sample customer and invoice values."}
+                    </p>
                   </div>
                   <button
                     type="button"
