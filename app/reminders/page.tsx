@@ -90,13 +90,16 @@ export default function AutoEmailShootPage() {
         return;
       }
 
+      const today = new Date().toISOString().slice(0, 10);
+
       const [templateRes, companyRes, overdueRes, logRes] = await Promise.all([
         supabase.from("reminder_templates").select("*").order("name", { ascending: true }),
         supabase.from("company").select("*").limit(1).maybeSingle(),
         supabase
           .from("invoices")
           .select("*, customers(name), receipt_allocations(amount)")
-          .eq("status", "overdue")
+          .in("status", ["open", "partial", "overdue"])
+          .lt("due_date", today)
           .order("due_date", { ascending: true }),
         supabase
           .from("reminder_log")
@@ -117,15 +120,17 @@ export default function AutoEmailShootPage() {
 
       if (!overdueRes.error && overdueRes.data) {
         const invoices = overdueRes.data as (InvoiceWithAllocations & { customers?: { name: string } | null })[];
-        const rows: OverdueRow[] = invoices.map((invoice) => {
-          const days = daysOverdue(invoice.due_date);
-          return {
-            ...invoice,
-            balance_due: outstandingOf(invoice),
-            aging_bucket: agingBucket(days),
-            days_overdue: days,
-          };
-        });
+        const rows: OverdueRow[] = invoices
+          .map((invoice) => {
+            const days = daysOverdue(invoice.due_date);
+            return {
+              ...invoice,
+              balance_due: outstandingOf(invoice),
+              aging_bucket: agingBucket(days),
+              days_overdue: days,
+            };
+          })
+          .filter((invoice) => invoice.balance_due > 0);
         setOverdueInvoices(rows);
       }
 
