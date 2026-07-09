@@ -1,29 +1,62 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { FormField, inputClass } from "@/components/FormField";
 import { NotConfigured } from "@/components/NotConfigured";
-import { useToast } from "@/components/Toast";
 import { isConfigured, supabase } from "@/lib/supabase";
 
 type TemplateRecord = {
   id?: string | null;
+  template_name?: string | null;
+  reminder_level?: string | null;
+  email_from?: string | null;
+  reply_to?: string | null;
+  cc?: string | null;
+  bcc?: string | null;
+  status?: string | null;
+  include_invoice_pdf?: boolean | null;
+  include_customer_statement?: boolean | null;
+  stop_after_payment?: boolean | null;
+  auto_email?: boolean | null;
   subject?: string | null;
   body?: string | null;
+  created_by?: string | null;
+  updated_by?: string | null;
+  version?: number | string | null;
 };
 
-type OverdueInvoice = InvoiceWithAllocations & { customers?: { name: string } | null };
+type ToastState = {
+  type: "success" | "error";
+  message: string;
+} | null;
 
-const PLACEHOLDERS = [
-  "{customer}",
-  "{amount}",
-  "{days_overdue}",
-  "{invoice_no}",
-  "{invoice_date}",
-  "{due_date}",
-  "{company_name}",
-  "{payment_link}",
+type PlaceholderGroup = {
+  title: string;
+  placeholders: string[];
+};
+
+const PLACEHOLDER_GROUPS: PlaceholderGroup[] = [
+  {
+    title: "Customer",
+    placeholders: ["{customer}", "{contact_person}", "{customer_email}"],
+  },
+  {
+    title: "Invoice",
+    placeholders: ["{invoice_no}", "{invoice_date}", "{due_date}", "{invoice_total}", "{outstanding_amount}", "{currency}"],
+  },
+  {
+    title: "Reminder",
+    placeholders: ["{days_overdue}", "{today_date}"],
+  },
+  {
+    title: "Payment",
+    placeholders: ["{payment_link}", "{bank_details}"],
+  },
+  {
+    title: "Company",
+    placeholders: ["{company_name}", "{company_email}", "{company_phone}"],
+  },
 ];
 
 const SAMPLE_VALUES: Record<string, string> = {
@@ -33,8 +66,16 @@ const SAMPLE_VALUES: Record<string, string> = {
   invoice_no: "INV-10025",
   invoice_date: "05 Jul 2026",
   due_date: "20 Jul 2026",
-  company_name: "Verve Advisory",
+  invoice_total: "₹25,400",
+  outstanding_amount: "₹25,400",
+  currency: "INR",
+  days_overdue: "18",
+  today_date: "09 Jul 2026",
   payment_link: "https://example.com/pay",
+  bank_details: "A/C 123456789 | HDFC Bank",
+  company_name: "Verve Advisory",
+  company_email: "finance@verveadvisory.com",
+  company_phone: "+91 99999 99999",
 };
 
 function renderTemplate(text: string, values: Record<string, string>) {
@@ -42,82 +83,166 @@ function renderTemplate(text: string, values: Record<string, string>) {
 }
 
 export default function ReminderTemplatePage() {
+  const [templateName, setTemplateName] = useState("");
+  const [reminderLevel, setReminderLevel] = useState("Level 1 Reminder");
+  const [emailFrom, setEmailFrom] = useState("");
+  const [replyTo, setReplyTo] = useState("");
+  const [cc, setCc] = useState("");
+  const [bcc, setBcc] = useState("");
+  const [status, setStatus] = useState("active");
+  const [includeInvoicePdf, setIncludeInvoicePdf] = useState(false);
+  const [includeCustomerStatement, setIncludeCustomerStatement] = useState(false);
+  const [stopAfterPayment, setStopAfterPayment] = useState(false);
+  const [autoEmail, setAutoEmail] = useState(false);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
-  const [initialSubject, setInitialSubject] = useState("");
-  const [initialBody, setInitialBody] = useState("");
+  const [createdBy, setCreatedBy] = useState("System");
+  const [updatedBy, setUpdatedBy] = useState("System");
+  const [version, setVersion] = useState("1.0");
+  const [initialValues, setInitialValues] = useState({
+    templateName: "",
+    reminderLevel: "Level 1 Reminder",
+    emailFrom: "",
+    replyTo: "",
+    cc: "",
+    bcc: "",
+    status: "active",
+    includeInvoicePdf: false,
+    includeCustomerStatement: false,
+    stopAfterPayment: false,
+    autoEmail: false,
+    subject: "",
+    body: "",
+    createdBy: "System",
+    updatedBy: "System",
+    version: "1.0",
+  });
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showTestModal, setShowTestModal] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
-  const [errors, setErrors] = useState<{ subject?: string; body?: string }>({});
+  const [errors, setErrors] = useState<{ templateName?: string; reminderLevel?: string; subject?: string; body?: string }>({});
 
   const subjectRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
-
-  async function loadTemplates(selectId?: string | null) {
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
-
-    const result = await supabase.from("reminder_templates").select("*").order("name", { ascending: true });
-
-    if (!result.error && result.data) {
-      const list = result.data as ReminderTemplate[];
-      setTemplates(list);
-      const next = list.find((t) => t.id === selectId) ?? list[0] ?? null;
-      selectTemplate(next);
-    }
-
-    setLoading(false);
-  }
 
   useEffect(() => {
     if (!supabase || !isConfigured) {
       setLoading(false);
       return;
     }
-    loadTemplates();
 
     async function loadTemplate() {
-      if (!supabase) {
-        setLoading(false);
-        return;
-      }
-
       const client = supabase;
-      const tryTable = async (table: string) => {
-        return client.from(table).select("id, subject, body").order("id", { ascending: true }).limit(1).maybeSingle();
+
+      const loadFromTable = async (table: string) => {
+        const broadResult = await client
+          .from(table)
+          .select(
+            "id, subject, body, template_name, reminder_level, email_from, reply_to, cc, bcc, status, include_invoice_pdf, include_customer_statement, stop_after_payment, auto_email, created_by, updated_by, version"
+          )
+          .order("id", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (!broadResult.error) {
+          return broadResult;
+        }
+
+        return client
+          .from(table)
+          .select("id, subject, body")
+          .order("id", { ascending: true })
+          .limit(1)
+          .maybeSingle();
       };
 
-      const firstAttempt = await tryTable("templates");
-      let result = firstAttempt;
-
-      if (firstAttempt.error) {
-        result = await tryTable("reminder_templates");
+      let result = await loadFromTable("templates");
+      if (result.error) {
+        result = await loadFromTable("reminder_templates");
       }
 
       if (!result.error && result.data) {
         const data = result.data as TemplateRecord;
         setTemplateId(data.id ?? null);
+        setTemplateName(data.template_name ?? "");
+        setReminderLevel(data.reminder_level ?? "Level 1 Reminder");
+        setEmailFrom(data.email_from ?? "");
+        setReplyTo(data.reply_to ?? "");
+        setCc(data.cc ?? "");
+        setBcc(data.bcc ?? "");
+        setStatus(data.status ?? "active");
+        setIncludeInvoicePdf(Boolean(data.include_invoice_pdf));
+        setIncludeCustomerStatement(Boolean(data.include_customer_statement));
+        setStopAfterPayment(Boolean(data.stop_after_payment));
+        setAutoEmail(Boolean(data.auto_email));
         setSubject(data.subject ?? "");
         setBody(data.body ?? "");
-        setInitialSubject(data.subject ?? "");
-        setInitialBody(data.body ?? "");
+        setCreatedBy(data.created_by ?? "System");
+        setUpdatedBy(data.updated_by ?? "System");
+        setVersion(data.version ? String(data.version) : "1.0");
+        setInitialValues({
+          templateName: data.template_name ?? "",
+          reminderLevel: data.reminder_level ?? "Level 1 Reminder",
+          emailFrom: data.email_from ?? "",
+          replyTo: data.reply_to ?? "",
+          cc: data.cc ?? "",
+          bcc: data.bcc ?? "",
+          status: data.status ?? "active",
+          includeInvoicePdf: Boolean(data.include_invoice_pdf),
+          includeCustomerStatement: Boolean(data.include_customer_statement),
+          stopAfterPayment: Boolean(data.stop_after_payment),
+          autoEmail: Boolean(data.auto_email),
+          subject: data.subject ?? "",
+          body: data.body ?? "",
+          createdBy: data.created_by ?? "System",
+          updatedBy: data.updated_by ?? "System",
+          version: data.version ? String(data.version) : "1.0",
+        });
       } else {
         setTemplateId(null);
+        setTemplateName("");
+        setReminderLevel("Level 1 Reminder");
+        setEmailFrom("");
+        setReplyTo("");
+        setCc("");
+        setBcc("");
+        setStatus("active");
+        setIncludeInvoicePdf(false);
+        setIncludeCustomerStatement(false);
+        setStopAfterPayment(false);
+        setAutoEmail(false);
         setSubject("");
         setBody("");
-        setInitialSubject("");
-        setInitialBody("");
+        setCreatedBy("System");
+        setUpdatedBy("System");
+        setVersion("1.0");
+        setInitialValues({
+          templateName: "",
+          reminderLevel: "Level 1 Reminder",
+          emailFrom: "",
+          replyTo: "",
+          cc: "",
+          bcc: "",
+          status: "active",
+          includeInvoicePdf: false,
+          includeCustomerStatement: false,
+          stopAfterPayment: false,
+          autoEmail: false,
+          subject: "",
+          body: "",
+          createdBy: "System",
+          updatedBy: "System",
+          version: "1.0",
+        });
       }
 
       setLoading(false);
     }
 
-    loadTemplate();
+    void loadTemplate();
   }, []);
 
   useEffect(() => {
@@ -126,8 +251,69 @@ export default function ReminderTemplatePage() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const previewSubject = useMemo(() => renderTemplate(subject || "Reminder: your invoice is overdue"), [subject]);
-  const previewBody = useMemo(() => renderTemplate(body || "Hello {customer},\n\nYour invoice {invoice_no} for {amount} is now {days_overdue} days overdue. Please review and settle it at your earliest convenience.\n\nRegards,\n{company_name}"), [body]);
+  useEffect(() => {
+    const hasChanges = [
+      templateName !== initialValues.templateName,
+      reminderLevel !== initialValues.reminderLevel,
+      emailFrom !== initialValues.emailFrom,
+      replyTo !== initialValues.replyTo,
+      cc !== initialValues.cc,
+      bcc !== initialValues.bcc,
+      status !== initialValues.status,
+      includeInvoicePdf !== initialValues.includeInvoicePdf,
+      includeCustomerStatement !== initialValues.includeCustomerStatement,
+      stopAfterPayment !== initialValues.stopAfterPayment,
+      autoEmail !== initialValues.autoEmail,
+      subject !== initialValues.subject,
+      body !== initialValues.body,
+      createdBy !== initialValues.createdBy,
+      updatedBy !== initialValues.updatedBy,
+      version !== initialValues.version,
+    ].some(Boolean);
+
+    if (!hasChanges) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [
+    templateName,
+    reminderLevel,
+    emailFrom,
+    replyTo,
+    cc,
+    bcc,
+    status,
+    includeInvoicePdf,
+    includeCustomerStatement,
+    stopAfterPayment,
+    autoEmail,
+    subject,
+    body,
+    createdBy,
+    updatedBy,
+    version,
+    initialValues,
+  ]);
+
+  const previewSubject = useMemo(
+    () => renderTemplate(subject || "Reminder: your invoice is overdue", SAMPLE_VALUES),
+    [subject]
+  );
+
+  const previewBody = useMemo(
+    () =>
+      renderTemplate(
+        body ||
+          "Hello {customer},\n\nThis is a friendly reminder that invoice {invoice_no} for {invoice_total} remains outstanding. The balance due is {outstanding_amount} and the invoice was due on {due_date}. Please review and settle this amount at your earliest convenience.\n\nRegards,\n{company_name}",
+        SAMPLE_VALUES
+      ),
+    [body]
+  );
 
   function insertPlaceholder(placeholder: string) {
     const active = document.activeElement;
@@ -169,7 +355,9 @@ export default function ReminderTemplatePage() {
   }
 
   function validate() {
-    const nextErrors: { subject?: string; body?: string } = {};
+    const nextErrors: { templateName?: string; reminderLevel?: string; subject?: string; body?: string } = {};
+    if (!templateName.trim()) nextErrors.templateName = "Template name is required.";
+    if (!reminderLevel.trim()) nextErrors.reminderLevel = "Reminder level is required.";
     if (!subject.trim()) nextErrors.subject = "Subject is required.";
     if (!body.trim()) nextErrors.body = "Body is required.";
     setErrors(nextErrors);
@@ -178,23 +366,50 @@ export default function ReminderTemplatePage() {
 
   async function saveTemplate(mode: "update" | "new") {
     if (!supabase || !isConfigured || !validate()) {
-      setToast({ type: "error", message: "Please fill in both the subject and body." });
+      setToast({ type: "error", message: "Please complete the required fields before saving." });
       return;
     }
 
     const client = supabase;
     setSaving(true);
+    setToast(null);
 
     const payload = {
+      template_name: templateName.trim(),
+      reminder_level: reminderLevel.trim(),
+      email_from: emailFrom.trim(),
+      reply_to: replyTo.trim(),
+      cc: cc.trim(),
+      bcc: bcc.trim(),
+      status: status,
+      include_invoice_pdf: includeInvoicePdf,
+      include_customer_statement: includeCustomerStatement,
+      stop_after_payment: stopAfterPayment,
+      auto_email: autoEmail,
+      subject: subject.trim(),
+      body: body.trim(),
+      created_by: createdBy.trim() || "System",
+      updated_by: updatedBy.trim() || "System",
+      version: version.trim() || "1.0",
+    };
+
+    const fallbackPayload = {
       subject: subject.trim(),
       body: body.trim(),
     };
 
     const saveToTable = async (table: string) => {
-      if (templateId) {
-        return client.from(table).update(payload).eq("id", templateId).select("id").single();
+      if (mode === "update" && templateId) {
+        const fullResult = await client.from(table).update(payload).eq("id", templateId).select("id").single();
+        if (!fullResult.error) return fullResult;
+
+        return client.from(table).update(fallbackPayload).eq("id", templateId).select("id").single();
       }
-      return client.from(table).insert(payload).select("id").single();
+
+      const fullResult = await client.from(table).insert(payload).select("id").single();
+      if (!fullResult.error) return fullResult;
+
+      return client.from(table).insert(fallbackPayload).select("id").single();
     };
 
     let result = await saveToTable("templates");
@@ -203,37 +418,73 @@ export default function ReminderTemplatePage() {
     }
 
     if (result.error) {
-      toast.error("We could not save the template. Please try again.");
+      setToast({ type: "error", message: "We could not save the template. Please try again." });
     } else {
       setTemplateId(result.data?.id ?? templateId);
-      setInitialSubject(subject.trim());
-      setInitialBody(body.trim());
-      setToast({ type: "success", message: "Reminder template saved successfully." });
+      setInitialValues({
+        templateName,
+        reminderLevel,
+        emailFrom,
+        replyTo,
+        cc,
+        bcc,
+        status,
+        includeInvoicePdf,
+        includeCustomerStatement,
+        stop_after_payment: stopAfterPayment,
+        auto_email: autoEmail,
+        subject,
+        body,
+        createdBy: createdBy.trim() || "System",
+        updatedBy: updatedBy.trim() || "System",
+        version: version.trim() || "1.0",
+      });
+      setCreatedBy(createdBy.trim() || "System");
+      setUpdatedBy(updatedBy.trim() || "System");
+      setVersion(version.trim() || "1.0");
+      setToast({ type: "success", message: mode === "new" ? "Template created successfully." : "Reminder template saved successfully." });
     }
 
     setSaving(false);
   }
 
   function handleReset() {
-    setSubject(initialSubject);
-    setBody(initialBody);
+    setTemplateName(initialValues.templateName);
+    setReminderLevel(initialValues.reminderLevel);
+    setEmailFrom(initialValues.emailFrom);
+    setReplyTo(initialValues.replyTo);
+    setCc(initialValues.cc);
+    setBcc(initialValues.bcc);
+    setStatus(initialValues.status);
+    setIncludeInvoicePdf(initialValues.includeInvoicePdf);
+    setIncludeCustomerStatement(initialValues.includeCustomerStatement);
+    setStopAfterPayment(initialValues.stopAfterPayment);
+    setAutoEmail(initialValues.autoEmail);
+    setSubject(initialValues.subject);
+    setBody(initialValues.body);
+    setCreatedBy(initialValues.createdBy);
+    setUpdatedBy(initialValues.updatedBy);
+    setVersion(initialValues.version);
     setErrors({});
     setToast(null);
   }
 
   return (
     <>
-      <PageHeader
-        title="Reminder Template"
-        subtitle="Configure the reminder email sent during AR follow-ups."
-      />
+      <PageHeader title="Reminder Template" subtitle="Configure the reminder email sent during AR follow-ups." />
 
       {!isConfigured && <NotConfigured />}
 
       {isConfigured && (
         <div className="space-y-6">
-          <div className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
-            <form onSubmit={handleSave} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="grid gap-6 2xl:grid-cols-[1.35fr_0.75fr]">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void saveTemplate(templateId ? "update" : "new");
+              }}
+              className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+            >
               <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h3 className="text-lg font-semibold text-slate-900">Reminder Template Studio</h3>
@@ -276,7 +527,7 @@ export default function ReminderTemplatePage() {
                     disabled={saving || loading}
                     className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand/90 disabled:cursor-not-allowed disabled:bg-slate-300"
                   >
-                    {saving ? "Saving..." : selectedId ? "Save Template" : "Create Template"}
+                    {saving ? "Saving..." : templateId ? "Save Template" : "Create Template"}
                   </button>
                 </div>
               </div>
@@ -284,23 +535,109 @@ export default function ReminderTemplatePage() {
               {loading ? (
                 <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-                  Loading your templates...
+                  Loading your current template...
                 </div>
               ) : (
-                <div className="space-y-5">
-                  <FormField label="Email Subject">
-                    <input
-                      ref={subjectRef}
-                      className={inputClass}
-                      value={subject}
-                      onChange={(event) => {
-                        setSubject(event.target.value);
-                        if (errors.subject) setErrors((prev) => ({ ...prev, subject: undefined }));
-                      }}
-                      placeholder="Payment reminder: invoice {invoice_no}"
-                    />
-                    {errors.subject && <p className="text-sm text-rose-600">{errors.subject}</p>}
-                  </FormField>
+                <div className="space-y-6">
+                  <div className="rounded-2xl border border-slate-50 bg-slate-50/70 p-5">
+                    <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">General Information</h4>
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <FormField label="Template Name">
+                        <input
+                          className={`${inputClass} ${errors.templateName ? "border-rose-400" : ""}`}
+                          value={templateName}
+                          onChange={(event) => {
+                            setTemplateName(event.target.value);
+                            if (errors.templateName) setErrors((prev) => ({ ...prev, templateName: undefined }));
+                          }}
+                          placeholder="Overdue Invoice Reminder"
+                        />
+                        {errors.templateName && <p className="text-sm text-rose-600">{errors.templateName}</p>}
+                      </FormField>
+
+                      <FormField label="Reminder Level">
+                        <select
+                          className={`${inputClass} ${errors.reminderLevel ? "border-rose-400" : ""}`}
+                          value={reminderLevel}
+                          onChange={(event) => {
+                            setReminderLevel(event.target.value);
+                            if (errors.reminderLevel) setErrors((prev) => ({ ...prev, reminderLevel: undefined }));
+                          }}
+                        >
+                          <option>Level 1 Reminder</option>
+                          <option>Level 2 Reminder</option>
+                          <option>Level 3 Reminder</option>
+                          <option>Final Notice</option>
+                        </select>
+                        {errors.reminderLevel && <p className="text-sm text-rose-600">{errors.reminderLevel}</p>}
+                      </FormField>
+
+                      <FormField label="Email From">
+                        <input
+                          className={inputClass}
+                          value={emailFrom}
+                          onChange={(event) => setEmailFrom(event.target.value)}
+                          placeholder="finance@verveadvisory.com"
+                        />
+                      </FormField>
+
+                      <FormField label="Reply-To">
+                        <input
+                          className={inputClass}
+                          value={replyTo}
+                          onChange={(event) => setReplyTo(event.target.value)}
+                          placeholder="collections@verveadvisory.com"
+                        />
+                      </FormField>
+
+                      <FormField label="CC">
+                        <input
+                          className={inputClass}
+                          value={cc}
+                          onChange={(event) => setCc(event.target.value)}
+                          placeholder="team@verveadvisory.com"
+                        />
+                      </FormField>
+
+                      <FormField label="BCC">
+                        <input
+                          className={inputClass}
+                          value={bcc}
+                          onChange={(event) => setBcc(event.target.value)}
+                          placeholder="archive@verveadvisory.com"
+                        />
+                      </FormField>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+                      <span className="text-sm font-medium text-slate-700">Status</span>
+                      <button
+                        type="button"
+                        onClick={() => setStatus(status === "active" ? "inactive" : "active")}
+                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold transition ${status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-700"}`}
+                      >
+                        <span className={`h-2.5 w-2.5 rounded-full ${status === "active" ? "bg-emerald-600" : "bg-slate-500"}`} />
+                        {status === "active" ? "Active" : "Inactive"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-50 bg-slate-50/70 p-5">
+                    <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Email Content</h4>
+                    <div className="mt-4 space-y-4">
+                      <FormField label="Subject">
+                        <input
+                          ref={subjectRef}
+                          className={`${inputClass} ${errors.subject ? "border-rose-400" : ""}`}
+                          value={subject}
+                          onChange={(event) => {
+                            setSubject(event.target.value);
+                            if (errors.subject) setErrors((prev) => ({ ...prev, subject: undefined }));
+                          }}
+                          placeholder="Payment reminder: invoice {invoice_no}"
+                        />
+                        {errors.subject && <p className="text-sm text-rose-600">{errors.subject}</p>}
+                      </FormField>
 
                       <FormField label="Email Body">
                         <textarea
@@ -318,7 +655,7 @@ export default function ReminderTemplatePage() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+                  <div className="rounded-2xl border border-slate-50 bg-slate-50/70 p-5">
                     <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Email Settings</h4>
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
                       {[
@@ -389,13 +726,29 @@ export default function ReminderTemplatePage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-slate-900">Quick Preview</h3>
-                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm font-semibold text-slate-900">Subject</p>
-                  <p className="mt-1 text-sm text-slate-700">{previewSubject}</p>
-                  <p className="mt-4 text-sm font-semibold text-slate-900">Body</p>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{previewBody}</p>
+              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-900">Template Information</h3>
+                <div className="mt-4 grid gap-3 text-sm text-slate-600">
+                  <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                    <span>Created By</span>
+                    <span className="font-medium text-slate-900">{createdBy || "System"}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                    <span>Created On</span>
+                    <span className="font-medium text-slate-900">{templateId ? "Loaded from database" : "Not saved yet"}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                    <span>Updated By</span>
+                    <span className="font-medium text-slate-900">{updatedBy || "System"}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                    <span>Updated On</span>
+                    <span className="font-medium text-slate-900">{templateId ? "Synced with current record" : "Pending save"}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                    <span>Version</span>
+                    <span className="font-medium text-slate-900">{version}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -403,15 +756,11 @@ export default function ReminderTemplatePage() {
 
           {showPreview && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-              <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+              <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900">Email Preview</h3>
-                    <p className="text-sm text-slate-500">
-                      {previewInvoice
-                        ? `Rendered with real values from ${previewInvoice.invoice_no}.`
-                        : "Rendered with sample customer and invoice values."}
-                    </p>
+                    <p className="text-sm text-slate-500">Rendered with sample customer and invoice values.</p>
                   </div>
                   <button
                     type="button"
@@ -438,9 +787,7 @@ export default function ReminderTemplatePage() {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
               <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
                 <h3 className="text-lg font-semibold text-slate-900">Test Email</h3>
-                <p className="mt-2 text-sm text-slate-600">
-                  Test email functionality will be connected later.
-                </p>
+                <p className="mt-2 text-sm text-slate-600">Test email functionality will be connected later.</p>
                 <div className="mt-6 flex justify-end gap-2">
                   <button
                     type="button"
@@ -451,6 +798,12 @@ export default function ReminderTemplatePage() {
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {toast && (
+            <div className={`fixed bottom-4 right-4 z-50 rounded-xl border px-4 py-3 text-sm shadow-lg ${toast.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>
+              {toast.message}
             </div>
           )}
         </div>
