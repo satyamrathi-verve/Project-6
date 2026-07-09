@@ -16,7 +16,7 @@ import type { ReminderLog, ReminderTemplate, Company } from "@/lib/types";
 type AgingBucket = "Not due" | "0-30 days" | "31-60 days" | "61-90 days" | "90+ days";
 
 type OverdueRow = InvoiceWithAllocations & {
-  customers?: { name: string; email: string | null } | null;
+  customers?: { name: string; email: string | null; contact_person: string | null } | null;
   balance_due: number;
   aging_bucket: AgingBucket;
   days_overdue: number;
@@ -138,7 +138,7 @@ export default function AutoEmailShootPage() {
         supabase.from("company").select("*").limit(1).maybeSingle(),
         supabase
           .from("invoices")
-          .select("*, customers(name, email), receipt_allocations(amount)")
+          .select("*, customers(name, email, contact_person), receipt_allocations(amount)")
           .in("status", ["open", "partial", "overdue"])
           .lt("due_date", today)
           .order("due_date", { ascending: true }),
@@ -161,7 +161,7 @@ export default function AutoEmailShootPage() {
 
       if (!overdueRes.error && overdueRes.data) {
         const invoices = overdueRes.data as (InvoiceWithAllocations & {
-          customers?: { name: string; email: string | null } | null;
+          customers?: { name: string; email: string | null; contact_person: string | null } | null;
         })[];
         const rows: OverdueRow[] = invoices
           .map((invoice) => {
@@ -365,12 +365,18 @@ export default function AutoEmailShootPage() {
       const customerName = invoice.customers?.name ?? "Customer";
       const data = {
         customer: customerName,
+        contact_person: invoice.customers?.contact_person ?? "",
+        customer_email: invoice.customers?.email ?? "",
         amount: money.format(invoice.balance_due),
+        invoice_total: money.format(Number(invoice.total)),
         days_overdue: String(Math.max(0, invoice.days_overdue)),
         invoice_no: invoice.invoice_no,
         invoice_date: formatDate(invoice.invoice_date),
         due_date: formatDate(invoice.due_date),
+        today_date: formatDate(new Date().toISOString()),
         company_name: company?.name ?? "",
+        company_email: company?.email ?? "",
+        company_phone: company?.phone ?? "",
       };
 
       return {
