@@ -6,12 +6,7 @@ import { FormField, inputClass } from "@/components/FormField";
 import { NotConfigured } from "@/components/NotConfigured";
 import { useToast } from "@/components/Toast";
 import { isConfigured, supabase } from "@/lib/supabase";
-
-type TemplateRecord = {
-  id?: string | null;
-  subject?: string | null;
-  body?: string | null;
-};
+import type { ReminderTemplate } from "@/lib/types";
 
 const PLACEHOLDERS = [
   "{customer}",
@@ -38,64 +33,62 @@ function renderTemplate(text: string) {
 }
 
 export default function ReminderTemplatePage() {
+  const [templates, setTemplates] = useState<ReminderTemplate[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
-  const [initialSubject, setInitialSubject] = useState("");
-  const [initialBody, setInitialBody] = useState("");
-  const [templateId, setTemplateId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [errors, setErrors] = useState<{ subject?: string; body?: string }>({});
+  const [errors, setErrors] = useState<{ name?: string; subject?: string; body?: string }>({});
   const toast = useToast();
 
   const subjectRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  async function loadTemplates(selectId?: string | null) {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
+    const result = await supabase.from("reminder_templates").select("*").order("name", { ascending: true });
+
+    if (!result.error && result.data) {
+      const list = result.data as ReminderTemplate[];
+      setTemplates(list);
+      const next = list.find((t) => t.id === selectId) ?? list[0] ?? null;
+      selectTemplate(next);
+    }
+
+    setLoading(false);
+  }
 
   useEffect(() => {
     if (!supabase || !isConfigured) {
       setLoading(false);
       return;
     }
-
-    async function loadTemplate() {
-      if (!supabase) {
-        setLoading(false);
-        return;
-      }
-
-      const client = supabase;
-      const tryTable = async (table: string) => {
-        return client.from(table).select("id, subject, body").order("id", { ascending: true }).limit(1).maybeSingle();
-      };
-
-      const firstAttempt = await tryTable("templates");
-      let result = firstAttempt;
-
-      if (firstAttempt.error) {
-        result = await tryTable("reminder_templates");
-      }
-
-      if (!result.error && result.data) {
-        const data = result.data as TemplateRecord;
-        setTemplateId(data.id ?? null);
-        setSubject(data.subject ?? "");
-        setBody(data.body ?? "");
-        setInitialSubject(data.subject ?? "");
-        setInitialBody(data.body ?? "");
-      } else {
-        setTemplateId(null);
-        setSubject("");
-        setBody("");
-        setInitialSubject("");
-        setInitialBody("");
-      }
-
-      setLoading(false);
-    }
-
-    loadTemplate();
+    loadTemplates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function selectTemplate(t: ReminderTemplate | null) {
+    setSelectedId(t?.id ?? null);
+    setName(t?.name ?? "");
+    setSubject(t?.subject ?? "");
+    setBody(t?.body ?? "");
+    setErrors({});
+  }
+
+  function handleNewTemplate() {
+    setSelectedId(null);
+    setName("");
+    setSubject("");
+    setBody("");
+    setErrors({});
+  }
 
   const previewSubject = useMemo(() => renderTemplate(subject || "Reminder: your invoice is overdue"), [subject]);
   const previewBody = useMemo(() => renderTemplate(body || "Hello {customer},\n\nYour invoice {invoice_no} for {amount} is now {days_overdue} days overdue. Please review and settle it at your earliest convenience.\n\nRegards,\n{company_name}"), [body]);
@@ -140,7 +133,8 @@ export default function ReminderTemplatePage() {
   }
 
   function validate() {
-    const nextErrors: { subject?: string; body?: string } = {};
+    const nextErrors: { name?: string; subject?: string; body?: string } = {};
+    if (!name.trim()) nextErrors.name = "Name is required.";
     if (!subject.trim()) nextErrors.subject = "Subject is required.";
     if (!body.trim()) nextErrors.body = "Body is required.";
     setErrors(nextErrors);
@@ -151,7 +145,7 @@ export default function ReminderTemplatePage() {
     event.preventDefault();
 
     if (!supabase || !isConfigured || !validate()) {
-      toast.error("Please fill in both the subject and body.");
+      toast.error("Please fill in the name, subject, and body.");
       return;
     }
 
@@ -159,51 +153,71 @@ export default function ReminderTemplatePage() {
     setSaving(true);
 
     const payload = {
+      name: name.trim(),
       subject: subject.trim(),
       body: body.trim(),
     };
 
-    const saveToTable = async (table: string) => {
-      if (templateId) {
-        return client.from(table).update(payload).eq("id", templateId).select("id").single();
-      }
-      return client.from(table).insert(payload).select("id").single();
-    };
-
-    let result = await saveToTable("templates");
-    if (result.error) {
-      result = await saveToTable("reminder_templates");
-    }
+    const result = selectedId
+      ? await client.from("reminder_templates").update(payload).eq("id", selectedId).select("id").single()
+      : await client.from("reminder_templates").insert(payload).select("id").single();
 
     if (result.error) {
       toast.error("We could not save the template. Please try again.");
     } else {
-      setTemplateId(result.data?.id ?? templateId);
-      setInitialSubject(subject.trim());
-      setInitialBody(body.trim());
       toast.success("Reminder template saved successfully.");
+      await loadTemplates(result.data?.id ?? selectedId);
     }
 
     setSaving(false);
   }
 
   function handleReset() {
-    setSubject(initialSubject);
-    setBody(initialBody);
-    setErrors({});
+    const current = templates.find((t) => t.id === selectedId) ?? null;
+    selectTemplate(current);
   }
 
   return (
     <>
       <PageHeader
         title="Reminder Template"
-        subtitle="Configure the reminder email sent during AR follow-ups."
+        subtitle="Configure the reminder emails sent during AR follow-ups."
       />
 
       {!isConfigured && <NotConfigured />}
 
       {isConfigured && (
         <div className="space-y-6">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              {templates.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => selectTemplate(t)}
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                    t.id === selectedId
+                      ? "bg-brand text-white"
+                      : "border border-slate-200 text-slate-700 hover:border-brand hover:text-brand"
+                  }`}
+                >
+                  {t.name}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={handleNewTemplate}
+                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                  selectedId === null && !loading
+                    ? "border-brand bg-brand/10 text-brand"
+                    : "border-dashed border-slate-300 text-slate-500 hover:border-brand hover:text-brand"
+                }`}
+              >
+                + New template
+              </button>
+            </div>
+          </div>
+
           <div className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
             <form onSubmit={handleSave} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -233,7 +247,7 @@ export default function ReminderTemplatePage() {
                     disabled={saving || loading}
                     className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand/90 disabled:cursor-not-allowed disabled:bg-slate-300"
                   >
-                    {saving ? "Saving..." : "Save Template"}
+                    {saving ? "Saving..." : selectedId ? "Save Template" : "Create Template"}
                   </button>
                 </div>
               </div>
@@ -241,10 +255,23 @@ export default function ReminderTemplatePage() {
               {loading ? (
                 <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand border-t-transparent" />
-                  Loading your current template...
+                  Loading your templates...
                 </div>
               ) : (
                 <div className="space-y-5">
+                  <FormField label="Template Name">
+                    <input
+                      className={inputClass}
+                      value={name}
+                      onChange={(event) => {
+                        setName(event.target.value);
+                        if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+                      }}
+                      placeholder="e.g. First reminder, Final notice"
+                    />
+                    {errors.name && <p className="text-sm text-rose-600">{errors.name}</p>}
+                  </FormField>
+
                   <FormField label="Email Subject">
                     <input
                       ref={subjectRef}

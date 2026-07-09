@@ -57,7 +57,8 @@ const agingClass: Record<AgingBucket, string> = {
 
 export default function AutoEmailShootPage() {
   const toast = useToast();
-  const [template, setTemplate] = useState<ReminderTemplate | null>(null);
+  const [templates, setTemplates] = useState<ReminderTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [company, setCompany] = useState<Company | null>(null);
   const [overdueInvoices, setOverdueInvoices] = useState<OverdueRow[]>([]);
   const [log, setLog] = useState<LogEntry[]>([]);
@@ -75,7 +76,7 @@ export default function AutoEmailShootPage() {
       }
 
       const [templateRes, companyRes, overdueRes, logRes] = await Promise.all([
-        supabase.from("reminder_templates").select("*").order("id", { ascending: true }).limit(1).maybeSingle(),
+        supabase.from("reminder_templates").select("*").order("name", { ascending: true }),
         supabase.from("company").select("*").limit(1).maybeSingle(),
         supabase
           .from("invoices")
@@ -90,7 +91,9 @@ export default function AutoEmailShootPage() {
       ]);
 
       if (!templateRes.error && templateRes.data) {
-        setTemplate(templateRes.data as ReminderTemplate);
+        const list = templateRes.data as ReminderTemplate[];
+        setTemplates(list);
+        setSelectedTemplateId(list[0]?.id ?? "");
       }
 
       if (!companyRes.error && companyRes.data) {
@@ -116,6 +119,11 @@ export default function AutoEmailShootPage() {
 
     loadData();
   }, []);
+
+  const selectedTemplate = useMemo(
+    () => templates.find((t) => t.id === selectedTemplateId) ?? null,
+    [templates, selectedTemplateId]
+  );
 
   const customerOptions = useMemo(() => {
     const names = new Set<string>();
@@ -173,7 +181,7 @@ export default function AutoEmailShootPage() {
   }, [log, invoiceNoFilter, customerFilter]);
 
   async function sendReminders() {
-    if (!supabase || !template) return;
+    if (!supabase || !selectedTemplate) return;
     setSending(true);
     setMessage(null);
 
@@ -193,8 +201,8 @@ export default function AutoEmailShootPage() {
       return {
         invoice_id: invoice.id,
         to_email: null,
-        subject: renderTemplate(template.subject || "", data),
-        body: renderTemplate(template.body || "", data),
+        subject: renderTemplate(selectedTemplate.subject || "", data),
+        body: renderTemplate(selectedTemplate.body || "", data),
         status: "sent",
         sent_at: new Date().toISOString(),
       };
@@ -311,7 +319,7 @@ export default function AutoEmailShootPage() {
                 <button
                   type="button"
                   onClick={sendReminders}
-                  disabled={sending || loading || !template || filteredInvoices.length === 0}
+                  disabled={sending || loading || !selectedTemplate || filteredInvoices.length === 0}
                   className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand/90 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {sending ? "Sending..." : "Send reminders"}
@@ -342,8 +350,25 @@ export default function AutoEmailShootPage() {
             <aside className="space-y-6">
               <section className="rounded-xl border border-slate-200 bg-white p-6">
                 <h3 className="text-lg font-semibold text-slate-900">Reminder template</h3>
-                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                  Use the Reminder Template screen to edit the subject and body before sending.
+                <p className="mt-1 text-sm text-slate-500">Choose which template to send. Edit wording on the Reminder Template screen.</p>
+                <div className="mt-4">
+                  <FormField label="Template">
+                    <select
+                      value={selectedTemplateId}
+                      onChange={(event) => setSelectedTemplateId(event.target.value)}
+                      className={inputClass}
+                    >
+                      {templates.length === 0 && <option value="">No templates yet</option>}
+                      {templates.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
+                  {selectedTemplate && (
+                    <p className="mt-3 text-sm text-slate-600 line-clamp-2">{selectedTemplate.subject}</p>
+                  )}
                 </div>
               </section>
 
