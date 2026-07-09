@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { FormField, inputClass } from "@/components/FormField";
 import { NotConfigured } from "@/components/NotConfigured";
+import { Modal } from "@/components/Modal";
 import { useToast } from "@/components/Toast";
 import { isConfigured, supabase } from "@/lib/supabase";
 import { money, formatDate } from "@/lib/format";
@@ -70,7 +71,9 @@ export default function ReminderTemplatePage() {
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; subject?: string; body?: string }>({});
 
   const [overdueInvoices, setOverdueInvoices] = useState<OverdueInvoice[]>([]);
@@ -268,6 +271,23 @@ export default function ReminderTemplatePage() {
     selectTemplate(current);
   }
 
+  async function handleDelete() {
+    if (!supabase || !selectedId) return;
+    setDeleting(true);
+
+    const { error } = await supabase.from("reminder_templates").delete().eq("id", selectedId);
+
+    if (error) {
+      toast.error("We could not delete the template. Please try again.");
+    } else {
+      toast.success("Template deleted.");
+      setConfirmDelete(false);
+      await loadTemplates(null);
+    }
+
+    setDeleting(false);
+  }
+
   return (
     <>
       <PageHeader title="Reminder Template" subtitle="Configure the reminder emails sent during AR follow-ups." />
@@ -316,6 +336,15 @@ export default function ReminderTemplatePage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  {selectedId && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(true)}
+                      className="rounded-lg border border-rose-200 px-4 py-2 text-sm font-medium text-rose-600 transition hover:bg-rose-50"
+                    >
+                      Delete
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={handleReset}
@@ -490,6 +519,32 @@ export default function ReminderTemplatePage() {
                 </div>
               </div>
             </div>
+          )}
+
+          {confirmDelete && (
+            <Modal title="Delete this template?" onClose={() => setConfirmDelete(false)}>
+              <p className="text-sm text-slate-700">
+                Delete <span className="font-semibold">{name || "this template"}</span>? This can&apos;t be undone.
+                Any invoice reminders already sent using it will keep their record in the touchpoint log.
+              </p>
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {deleting ? "Deleting..." : "Delete template"}
+                </button>
+              </div>
+            </Modal>
           )}
         </div>
       )}
