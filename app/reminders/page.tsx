@@ -6,6 +6,7 @@ import { NotConfigured } from "@/components/NotConfigured";
 import { FormField, inputClass } from "@/components/FormField";
 import { DataTable, type Column } from "@/components/DataTable";
 import { TableSkeleton } from "@/components/Skeleton";
+import { Modal } from "@/components/Modal";
 import { useToast } from "@/components/Toast";
 import { isConfigured, supabase } from "@/lib/supabase";
 import { money, formatDate } from "@/lib/format";
@@ -43,6 +44,12 @@ function daysOverdue(dueDate: string): number {
   return Math.floor((Date.now() - new Date(dueDate).getTime()) / 86400000);
 }
 
+const RECENT_REMINDER_HOURS = 24;
+
+function hoursSince(value: string): number {
+  return (Date.now() - new Date(value).getTime()) / 3600000;
+}
+
 function agingBucket(days: number): AgingBucket {
   if (days < 0) return "Not due";
   if (days <= 30) return "0-30 days";
@@ -74,6 +81,7 @@ export default function AutoEmailShootPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sortKey, setSortKey] = useState<string>("aging_bucket");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [confirmDuplicates, setConfirmDuplicates] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -206,6 +214,21 @@ export default function AutoEmailShootPage() {
     }, {});
   }, [log]);
 
+  function lastReminderHours(invoiceId: string): number | null {
+    const entries = remindersByInvoiceId[invoiceId];
+    if (!entries || entries.length === 0) return null;
+    return hoursSince(entries[0].sent_at);
+  }
+
+  const duplicateSelected = useMemo(
+    () =>
+      selectedInvoices.filter((invoice) => {
+        const hours = lastReminderHours(invoice.id);
+        return hours !== null && hours < RECENT_REMINDER_HOURS;
+      }),
+    [selectedInvoices, remindersByInvoiceId]
+  );
+
   function toggleSort(key: string) {
     if (key === sortKey) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -262,8 +285,18 @@ export default function AutoEmailShootPage() {
     return log.slice(0, 20);
   }, [log, invoiceNoFilter, customerFilter]);
 
-  async function sendReminders() {
+  function sendReminders() {
     if (!supabase || !selectedTemplate || selectedInvoices.length === 0) return;
+    if (duplicateSelected.length > 0) {
+      setConfirmDuplicates(true);
+      return;
+    }
+    performSend();
+  }
+
+  async function performSend() {
+    if (!supabase || !selectedTemplate) return;
+    setConfirmDuplicates(false);
     setSending(true);
     setMessage(null);
 
@@ -359,9 +392,16 @@ export default function AutoEmailShootPage() {
       render: (row) => {
         const entries = remindersByInvoiceId[row.id] || [];
         if (entries.length === 0) return <span className="text-slate-400">None yet</span>;
+        const hours = hoursSince(entries[0].sent_at);
+        const isRecent = hours < RECENT_REMINDER_HOURS;
         return (
           <span>
             {entries.length} · last {formatDate(entries[0].sent_at)}
+            {isRecent && (
+              <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                Sent recently
+              </span>
+            )}
           </span>
         );
       },
@@ -523,6 +563,39 @@ export default function AutoEmailShootPage() {
             </aside>
           </div>
         </div>
+      )}
+
+      {confirmDuplicates && (
+        <Modal title="Already reminded recently" onClose={() => setConfirmDuplicates(false)}>
+          <p className="text-sm text-slate-700">
+            {duplicateSelected.length} of the invoices you selected{" "}
+            {duplicateSelected.length === 1 ? "was" : "were"} already reminded within the last{" "}
+            {RECENT_REMINDER_HOURS} hours:
+          </p>
+          <ul className="mt-3 max-h-40 space-y-1 overflow-y-auto text-sm text-slate-600">
+            {duplicateSelected.map((invoice) => (
+              <li key={invoice.id}>
+                {invoice.invoice_no} — {invoice.customers?.name ?? "Customer"}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmDuplicates(false)}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={performSend}
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand/90"
+            >
+              Send anyway
+            </button>
+          </div>
+        </Modal>
       )}
     </>
   );
