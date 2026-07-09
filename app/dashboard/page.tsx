@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { NotConfigured } from "@/components/NotConfigured";
+import { CardSkeleton } from "@/components/Skeleton";
 import { isConfigured, supabase } from "@/lib/supabase";
 import { outstandingOf } from "@/lib/receivables";
 import type { Customer, Invoice, Receipt } from "@/lib/types";
@@ -57,7 +58,7 @@ function monthRange(): { start: string; end: string } {
 
 function StatTile({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 transition-shadow hover:shadow-md">
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
       <p className={`mt-1 text-lg font-bold ${accent ?? "text-slate-900"}`}>{value}</p>
     </div>
@@ -218,7 +219,13 @@ export default function DashboardPage() {
       {error && <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
 
       {loading ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Loading dashboard...</div>
+        <div className="space-y-6">
+          <CardSkeleton count={2} />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <CardSkeleton count={2} />
+            <CardSkeleton count={2} />
+          </div>
+        </div>
       ) : (
         <>
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -231,7 +238,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 transition-shadow hover:shadow-md">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-slate-600">Collections Health</h3>
                 <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
@@ -273,7 +280,7 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 transition-shadow hover:shadow-md">
               <h3 className="text-sm font-semibold text-slate-600">Top 5 Overdue Customers</h3>
               {topOverdueCustomers.length === 0 ? (
                 <p className="mt-4 text-sm text-slate-400">No overdue customers right now.</p>
@@ -294,7 +301,7 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 transition-shadow hover:shadow-md">
               <h3 className="text-sm font-semibold text-slate-600">DSO — Days Sales Outstanding</h3>
               <p className="mt-1 text-xs text-slate-400">30-day trailing window</p>
               <div className="mt-4 flex items-end gap-3">
@@ -310,7 +317,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <div className="rounded-xl border border-slate-200 bg-white p-5 transition-shadow hover:shadow-md">
               <h3 className="text-sm font-semibold text-slate-600">Average Collection Period by Customer</h3>
               <p className="mt-1 text-xs text-slate-400">Slowest 5 payers, average days from invoice to payment</p>
               {avgCollectionPeriod.length === 0 ? (

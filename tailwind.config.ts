@@ -9,9 +9,27 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          DEFAULT: "#2f6bff",
-          dark: "#1f4ed8",
+          DEFAULT: "#244788",
+          dark: "#182f5c",
+          light: "#e8edf7",
         },
+      },
+      fontFamily: {
+        sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
+      },
+      keyframes: {
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        "scale-in": {
+          "0%": { opacity: "0", transform: "scale(0.96)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+      },
+      animation: {
+        "fade-in": "fade-in 150ms ease-out",
+        "scale-in": "scale-in 150ms ease-out",
       },
     },
   },

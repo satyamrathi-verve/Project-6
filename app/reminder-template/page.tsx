@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { FormField, inputClass } from "@/components/FormField";
 import { NotConfigured } from "@/components/NotConfigured";
+import { useToast } from "@/components/Toast";
 import { isConfigured, supabase } from "@/lib/supabase";
 
 type TemplateRecord = {
@@ -11,11 +12,6 @@ type TemplateRecord = {
   subject?: string | null;
   body?: string | null;
 };
-
-type ToastState = {
-  type: "success" | "error";
-  message: string;
-} | null;
 
 const PLACEHOLDERS = [
   "{customer}",
@@ -52,8 +48,8 @@ export default function ReminderTemplatePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [toast, setToast] = useState<ToastState>(null);
   const [errors, setErrors] = useState<{ subject?: string; body?: string }>({});
+  const toast = useToast();
 
   const subjectRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -102,12 +98,6 @@ export default function ReminderTemplatePage() {
 
     loadTemplate();
   }, []);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = window.setTimeout(() => setToast(null), 3000);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
 
   const previewSubject = useMemo(() => renderTemplate(subject || "Reminder: your invoice is overdue"), [subject]);
   const previewBody = useMemo(() => renderTemplate(body || "Hello {customer},\n\nYour invoice {invoice_no} for {amount} is now {days_overdue} days overdue. Please review and settle it at your earliest convenience.\n\nRegards,\n{company_name}"), [body]);
@@ -163,13 +153,12 @@ export default function ReminderTemplatePage() {
     event.preventDefault();
 
     if (!supabase || !isConfigured || !validate()) {
-      setToast({ type: "error", message: "Please fill in both the subject and body." });
+      toast.error("Please fill in both the subject and body.");
       return;
     }
 
     const client = supabase;
     setSaving(true);
-    setToast(null);
 
     const payload = {
       subject: subject.trim(),
@@ -189,12 +178,12 @@ export default function ReminderTemplatePage() {
     }
 
     if (result.error) {
-      setToast({ type: "error", message: "We could not save the template. Please try again." });
+      toast.error("We could not save the template. Please try again.");
     } else {
       setTemplateId(result.data?.id ?? templateId);
       setInitialSubject(subject.trim());
       setInitialBody(body.trim());
-      setToast({ type: "success", message: "Reminder template saved successfully." });
+      toast.success("Reminder template saved successfully.");
     }
 
     setSaving(false);
@@ -204,7 +193,6 @@ export default function ReminderTemplatePage() {
     setSubject(initialSubject);
     setBody(initialBody);
     setErrors({});
-    setToast(null);
   }
 
   return (
@@ -323,8 +311,8 @@ export default function ReminderTemplatePage() {
           </div>
 
           {showPreview && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-              <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+            <div className="fixed inset-0 z-50 flex animate-fade-in items-center justify-center bg-slate-900/60 p-4">
+              <div className="w-full max-w-2xl animate-scale-in rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
                     <h3 className="text-lg font-semibold text-slate-900">Email Preview</h3>
@@ -345,12 +333,6 @@ export default function ReminderTemplatePage() {
                   <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{previewBody}</p>
                 </div>
               </div>
-            </div>
-          )}
-
-          {toast && (
-            <div className={`fixed bottom-4 right-4 z-50 rounded-xl border px-4 py-3 text-sm shadow-lg ${toast.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>
-              {toast.message}
             </div>
           )}
         </div>

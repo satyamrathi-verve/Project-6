@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { DataTable } from "@/components/DataTable";
 import { FormField, inputClass } from "@/components/FormField";
 import { NotConfigured } from "@/components/NotConfigured";
+import { TableSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/Toast";
 import { isConfigured, supabase } from "@/lib/supabase";
 import type { GLAccount } from "@/lib/types";
 
@@ -25,6 +27,7 @@ const emptyForm = (): AccountForm => ({
 });
 
 export default function GLMasterPage() {
+  const toast = useToast();
   const [accounts, setAccounts] = useState<GLAccount[]>([]);
   const [form, setForm] = useState<AccountForm>(emptyForm());
   const [loading, setLoading] = useState(true);
@@ -76,8 +79,10 @@ export default function GLMasterPage() {
     const { error } = await supabase.from("gl_accounts").insert(payload);
     if (error) {
       setError(error.message);
+      toast.error(error.message);
     } else {
       setMessage("Account added successfully.");
+      toast.success("Account added successfully.");
       setForm(emptyForm());
       const refresh = await supabase.from("gl_accounts").select("*").order("code", { ascending: true });
       if (!refresh.error) {
@@ -108,9 +113,7 @@ export default function GLMasterPage() {
             </div>
 
             {loading ? (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                Loading accounts...
-              </div>
+              <TableSkeleton rows={6} />
             ) : (
               <DataTable
                 rows={accounts}

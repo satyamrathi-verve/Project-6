@@ -6,6 +6,8 @@ import { FormField, inputClass } from "@/components/FormField";
 import { PageHeader } from "@/components/PageHeader";
 import { NotConfigured } from "@/components/NotConfigured";
 import { CsvImport } from "@/components/CsvImport";
+import { TableSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/Toast";
 import { isConfigured, supabase } from "@/lib/supabase";
 import {
   CUSTOMER_CSV_TEMPLATE_HEADERS,
@@ -50,6 +52,7 @@ function sanitizeNonNegative(value: string) {
 }
 
 export default function CustomerMasterPage() {
+  const toast = useToast();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -145,7 +148,9 @@ export default function CustomerMasterPage() {
           ? "Supabase permission denied for the customers table. Please allow insert/update access for this project key."
           : result.error.message;
       setError(message);
+      toast.error(message);
     } else {
+      toast.success(editingId ? "Customer updated." : "Customer created.");
       resetForm();
       await loadCustomers();
     }
@@ -180,7 +185,9 @@ export default function CustomerMasterPage() {
             Customer list
           </h3>
           {loading ? (
-            <p className="mt-4 text-sm text-slate-500">Loading customers…</p>
+            <div className="mt-4">
+              <TableSkeleton rows={6} />
+            </div>
           ) : (
             <div className="mt-4">
               <DataTable

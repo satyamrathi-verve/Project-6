@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { NotConfigured } from "@/components/NotConfigured";
 import { FormField, inputClass } from "@/components/FormField";
 import { DataTable, type Column } from "@/components/DataTable";
+import { TableSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/Toast";
 import { isConfigured, supabase } from "@/lib/supabase";
 import { money, formatDate } from "@/lib/format";
 import { outstandingOf, type InvoiceWithAllocations } from "@/lib/receivables";
@@ -54,6 +56,7 @@ const agingClass: Record<AgingBucket, string> = {
 };
 
 export default function AutoEmailShootPage() {
+  const toast = useToast();
   const [template, setTemplate] = useState<ReminderTemplate | null>(null);
   const [overdueInvoices, setOverdueInvoices] = useState<OverdueRow[]>([]);
   const [log, setLog] = useState<LogEntry[]>([]);
@@ -191,8 +194,10 @@ export default function AutoEmailShootPage() {
     const { error } = await supabase.from("reminder_log").insert(logRows);
     if (error) {
       setMessage("Unable to log the reminders right now.");
+      toast.error("Unable to log the reminders right now.");
     } else {
       setMessage("Reminder emails logged successfully.");
+      toast.success(`Logged reminders for ${logRows.length} overdue invoice${logRows.length === 1 ? "" : "s"}.`);
       const { data: freshLog } = await supabase
         .from("reminder_log")
         .select("*, invoices(invoice_no, customer_id, customers(name))")
@@ -311,7 +316,7 @@ export default function AutoEmailShootPage() {
               )}
 
               {loading ? (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Loading overdue invoices...</div>
+                <TableSkeleton rows={5} />
               ) : (
                 <DataTable
                   columns={columns}

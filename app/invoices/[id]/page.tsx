@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { DataTable, type Column } from "@/components/DataTable";
 import { NotConfigured } from "@/components/NotConfigured";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Skeleton } from "@/components/Skeleton";
 import { isConfigured, supabase } from "@/lib/supabase";
 import { money, formatDate } from "@/lib/format";
 import type { Customer, Invoice, InvoiceItem } from "@/lib/types";
@@ -77,7 +78,12 @@ export default function InvoiceViewPage() {
   if (!isConfigured) return <NotConfigured />;
 
   if (loading) {
-    return <p className="py-10 text-center text-slate-400">Loading invoice…</p>;
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-48 w-full" />
+      </div>
+    );
   }
 
   if (!invoice) {

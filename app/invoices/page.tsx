@@ -8,6 +8,7 @@ import { NotConfigured } from "@/components/NotConfigured";
 import { StatusBadge } from "@/components/StatusBadge";
 import { inputClass } from "@/components/FormField";
 import { CsvImport } from "@/components/CsvImport";
+import { TableSkeleton } from "@/components/Skeleton";
 import { isConfigured, supabase } from "@/lib/supabase";
 import { money, formatDate } from "@/lib/format";
 import type { CsvRow } from "@/lib/csv";
@@ -188,7 +189,7 @@ export default function InvoiceListPage() {
   if (!isConfigured) return <NotConfigured />;
 
   if (loading) {
-    return <p className="py-10 text-center text-slate-400">Loading invoices…</p>;
+    return <TableSkeleton rows={8} />;
   }
 
   const columns: Column<InvoiceRow>[] = [

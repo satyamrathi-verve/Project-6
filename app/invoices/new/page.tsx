@@ -5,6 +5,7 @@ import { DataTable } from "@/components/DataTable";
 import { FormField, inputClass } from "@/components/FormField";
 import { PageHeader } from "@/components/PageHeader";
 import { NotConfigured } from "@/components/NotConfigured";
+import { TableSkeleton } from "@/components/Skeleton";
 import { isConfigured, supabase } from "@/lib/supabase";
 import type { Customer, Invoice, InvoiceItem } from "@/lib/types";
 
@@ -282,7 +283,7 @@ export default function InvoicePage() {
           </div>
 
           {loading ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Loading invoices...</div>
+            <TableSkeleton rows={6} />
           ) : (
             <DataTable
               rows={invoiceRows}

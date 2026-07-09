@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { FormField, inputClass } from "@/components/FormField";
 import { DataTable, type Column } from "@/components/DataTable";
 import { NotConfigured } from "@/components/NotConfigured";
+import { TableSkeleton } from "@/components/Skeleton";
+import { PrintHeader } from "@/components/PrintHeader";
 import { isConfigured, supabase } from "@/lib/supabase";
 import { money, formatDate } from "@/lib/format";
 import type { Customer, Invoice, Receipt } from "@/lib/types";
@@ -161,6 +163,8 @@ export default function CustomerStatementPage() {
         }
       />
 
+      <PrintHeader title={customer ? `Customer Statement — ${customer.name}` : "Customer Statement"} />
+
       {!isConfigured && <NotConfigured />}
 
       {isConfigured && (
@@ -206,9 +210,7 @@ export default function CustomerStatementPage() {
               Select a customer above to view their statement.
             </div>
           ) : loading ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-              Loading statement...
-            </div>
+            <TableSkeleton rows={6} />
           ) : (
             <div className="print:overflow-visible">
               {customer && (

@@ -6,6 +6,8 @@ import { FormField, inputClass } from "@/components/FormField";
 import { DataTable, type Column } from "@/components/DataTable";
 import { NotConfigured } from "@/components/NotConfigured";
 import { StatusBadge } from "@/components/StatusBadge";
+import { Skeleton, TableSkeleton } from "@/components/Skeleton";
+import { useToast } from "@/components/Toast";
 import { isConfigured, supabase } from "@/lib/supabase";
 import { money, formatDate } from "@/lib/format";
 import type { Customer, Invoice, InvoiceStatus, Receipt, ReceiptMode } from "@/lib/types";
@@ -66,6 +68,7 @@ function compareReceipts(a: ReceiptRow, b: ReceiptRow, key: ReceiptSortKey): num
 }
 
 export default function ReceiptEntryPage() {
+  const toastApi = useToast();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [recentReceipts, setRecentReceipts] = useState<ReceiptRow[]>([]);
   const [openInvoices, setOpenInvoices] = useState<OpenInvoice[]>([]);
@@ -186,15 +189,21 @@ export default function ReceiptEntryPage() {
     setSuccessMsg(null);
 
     if (!form.receipt_no.trim() || !form.customer_id || receiptAmount <= 0) {
-      setError("Receipt No, customer, and a positive amount are required.");
+      const msg = "Receipt No, customer, and a positive amount are required.";
+      setError(msg);
+      toastApi.error(msg);
       return;
     }
     if (totalAllocated <= EPSILON) {
-      setError("Allocate the receipt to at least one open invoice.");
+      const msg = "Allocate the receipt to at least one open invoice.";
+      setError(msg);
+      toastApi.error(msg);
       return;
     }
     if (totalAllocated > receiptAmount + EPSILON) {
-      setError("You've allocated more than the receipt amount.");
+      const msg = "You've allocated more than the receipt amount.";
+      setError(msg);
+      toastApi.error(msg);
       return;
     }
 
@@ -232,17 +241,19 @@ export default function ReceiptEntryPage() {
         if (updateError) throw updateError;
       }
 
-      setSuccessMsg(
-        `Receipt ${receipt.receipt_no} saved and allocated to ${toAllocate.length} invoice${
-          toAllocate.length === 1 ? "" : "s"
-        }.`
-      );
+      const savedMsg = `Receipt ${receipt.receipt_no} saved and allocated to ${toAllocate.length} invoice${
+        toAllocate.length === 1 ? "" : "s"
+      }.`;
+      setSuccessMsg(savedMsg);
+      toastApi.success(savedMsg);
       setForm(emptyForm());
       setAllocations({});
       setOpenInvoices([]);
       await loadRecentReceipts();
     } catch (err) {
-      setError((err as Error).message);
+      const msg = (err as Error).message;
+      setError(msg);
+      toastApi.error(msg);
     }
     setSaving(false);
   }
@@ -309,7 +320,7 @@ export default function ReceiptEntryPage() {
   ]);
 
   if (!isConfigured) return <NotConfigured />;
-  if (loading) return <p className="py-10 text-center text-slate-400">Loading…</p>;
+  if (loading) return <TableSkeleton rows={6} />;
 
   const invoiceColumns: Column<OpenInvoice>[] = [
     { key: "invoice_no", header: "Invoice #" },
@@ -604,7 +615,11 @@ export default function ReceiptEntryPage() {
               </div>
 
               {loadingInvoices ? (
-                <p className="text-sm text-slate-400">Loading invoices…</p>
+                <div className="space-y-2">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
               ) : form.customer_id ? (
                 <>
                   <DataTable

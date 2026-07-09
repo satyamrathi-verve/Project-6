@@ -5,6 +5,8 @@ import { DataTable, type Column } from "@/components/DataTable";
 import { PageHeader } from "@/components/PageHeader";
 import { NotConfigured } from "@/components/NotConfigured";
 import { Modal } from "@/components/Modal";
+import { TableSkeleton } from "@/components/Skeleton";
+import { PrintHeader } from "@/components/PrintHeader";
 import { isConfigured, supabase } from "@/lib/supabase";
 import { outstandingOf, type InvoiceWithAllocations } from "@/lib/receivables";
 import type { Customer } from "@/lib/types";
@@ -293,12 +295,14 @@ export default function AgeingReportPage() {
         }
       />
 
+      <PrintHeader title="AR Ageing Report" />
+
       {!isConfigured && <NotConfigured />}
 
       {error && <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
 
       {loading ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Loading ageing report...</div>
+        <TableSkeleton rows={8} />
       ) : (
         <div className="print:overflow-visible">
           <DataTable

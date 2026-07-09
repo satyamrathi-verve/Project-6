@@ -16,6 +16,7 @@ import { DataTable, type Column } from "@/components/DataTable";
 import { inputClass } from "@/components/FormField";
 import { PageHeader } from "@/components/PageHeader";
 import { NotConfigured } from "@/components/NotConfigured";
+import { Skeleton, TableSkeleton } from "@/components/Skeleton";
 import { isConfigured, supabase } from "@/lib/supabase";
 import { outstandingOf, type InvoiceWithAllocations } from "@/lib/receivables";
 import type { Customer } from "@/lib/types";
@@ -306,7 +307,10 @@ export default function CashflowPage() {
       {error && <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
 
       {loading ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Loading projection...</div>
+        <div className="space-y-6">
+          <Skeleton className="h-72 w-full" />
+          <TableSkeleton rows={5} />
+        </div>
       ) : (
         <>
           <div className="mb-6 h-72 rounded-xl border border-slate-200 bg-white p-4">
@@ -332,7 +336,7 @@ export default function CashflowPage() {
                   labelFormatter={(d) => formatDate(String(d))}
                 />
                 <Legend />
-                <Bar yAxisId="left" dataKey="amount" name="Daily Collection" fill="#2f6bff" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="left" dataKey="amount" name="Daily Collection" fill="#244788" radius={[4, 4, 0, 0]} />
                 <Line
                   yAxisId="right"
                   type="monotone"
