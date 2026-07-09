@@ -97,6 +97,7 @@ function validateCustomerRow(row: CsvRow): { data: CustomerInsert | null; errors
       credit_limit: toNumber(row.credit_limit, 0),
       credit_days: toNumber(row.credit_days, 30),
       opening_balance: toNumber(row.opening_balance, 0),
+      status: "active",
       ...(createdDate ? { created_at: createdDate } : {}),
     },
     errors: [],
