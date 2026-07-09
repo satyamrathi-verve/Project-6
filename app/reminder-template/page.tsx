@@ -21,7 +21,6 @@ const PLACEHOLDERS = [
   "{invoice_date}",
   "{due_date}",
   "{company_name}",
-  "{payment_link}",
 ];
 
 const SAMPLE_VALUES: Record<string, string> = {
@@ -32,7 +31,6 @@ const SAMPLE_VALUES: Record<string, string> = {
   invoice_date: "05 Jul 2026",
   due_date: "20 Jul 2026",
   company_name: "Verve Advisory",
-  payment_link: "https://example.com/pay",
 };
 
 function renderTemplate(text: string) {

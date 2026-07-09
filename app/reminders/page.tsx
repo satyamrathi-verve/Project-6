@@ -10,7 +10,7 @@ import { useToast } from "@/components/Toast";
 import { isConfigured, supabase } from "@/lib/supabase";
 import { money, formatDate } from "@/lib/format";
 import { outstandingOf, type InvoiceWithAllocations } from "@/lib/receivables";
-import type { ReminderLog, ReminderTemplate } from "@/lib/types";
+import type { ReminderLog, ReminderTemplate, Company } from "@/lib/types";
 
 type AgingBucket = "Not due" | "0-30 days" | "31-60 days" | "61-90 days" | "90+ days";
 
@@ -58,6 +58,7 @@ const agingClass: Record<AgingBucket, string> = {
 export default function AutoEmailShootPage() {
   const toast = useToast();
   const [template, setTemplate] = useState<ReminderTemplate | null>(null);
+  const [company, setCompany] = useState<Company | null>(null);
   const [overdueInvoices, setOverdueInvoices] = useState<OverdueRow[]>([]);
   const [log, setLog] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,8 +74,9 @@ export default function AutoEmailShootPage() {
         return;
       }
 
-      const [templateRes, overdueRes, logRes] = await Promise.all([
+      const [templateRes, companyRes, overdueRes, logRes] = await Promise.all([
         supabase.from("reminder_templates").select("*").order("id", { ascending: true }).limit(1).maybeSingle(),
+        supabase.from("company").select("*").limit(1).maybeSingle(),
         supabase
           .from("invoices")
           .select("*, customers(name), receipt_allocations(amount)")
@@ -89,6 +91,10 @@ export default function AutoEmailShootPage() {
 
       if (!templateRes.error && templateRes.data) {
         setTemplate(templateRes.data as ReminderTemplate);
+      }
+
+      if (!companyRes.error && companyRes.data) {
+        setCompany(companyRes.data as Company);
       }
 
       if (!overdueRes.error && overdueRes.data) {
@@ -179,6 +185,9 @@ export default function AutoEmailShootPage() {
         amount: money.format(invoice.balance_due),
         days_overdue: daysOverdue,
         invoice_no: invoice.invoice_no,
+        invoice_date: formatDate(invoice.invoice_date),
+        due_date: formatDate(invoice.due_date),
+        company_name: company?.name ?? "",
       };
 
       return {
