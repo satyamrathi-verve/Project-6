@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { NotConfigured } from "@/components/NotConfigured";
 import { isConfigured, supabase } from "@/lib/supabase";
 import { money, formatDate } from "@/lib/format";
+import { effectiveStatus, outstandingOf } from "@/lib/receivables";
 import type { Company, Customer, Invoice, InvoiceItem } from "@/lib/types";
 
 type AllocationRow = {
@@ -83,7 +84,8 @@ export default function InvoicePrintPreviewPage() {
   }, [id]);
 
   const received = useMemo(() => allocations.reduce((sum, row) => sum + Number(row.amount), 0), [allocations]);
-  const outstanding = invoice ? Number(invoice.total) - received : 0;
+  const outstanding = invoice ? outstandingOf({ ...invoice, receipt_allocations: allocations }) : 0;
+  const liveStatus = invoice ? effectiveStatus(invoice, outstanding) : null;
 
   if (!isConfigured) return <NotConfigured />;
 
@@ -155,7 +157,7 @@ export default function InvoicePrintPreviewPage() {
               </div>
               <div className="flex items-center justify-between gap-4 py-1">
                 <span className="text-slate-500">Status</span>
-                <span className="font-semibold uppercase text-slate-900">{invoice.status}</span>
+                <span className="font-semibold uppercase text-slate-900">{liveStatus}</span>
               </div>
             </div>
           </div>

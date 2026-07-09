@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { CsvRow } from "@/lib/csv";
 import type { CsvImportGroup, CsvImportResult } from "@/components/CsvImport";
+import { addDays } from "@/lib/receivables";
 import type { Customer, InvoiceStatus } from "@/lib/types";
 
 /*
@@ -56,12 +57,6 @@ export const INVOICE_CSV_TEMPLATE_SAMPLE_ROWS = [
   ["2026-07-01", "INV-2001", "CUST-101", "Acme Traders", "", "2026-07-01", "900", "", "Travel reimbursement", "1", "2000"],
   ["2026-07-03", "INV-2002", "CUST-102", "Bright Textiles", "2026-08-02", "2026-07-03", "0", "Urgent delivery surcharge", "Express delivery", "2", "750"],
 ];
-
-function addDays(dateStr: string, days: number): string {
-  const date = new Date(`${dateStr}T00:00:00`);
-  date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
-}
 
 /** `customersByCode` resolves each row's human-readable customer_id (e.g. "CUST-101") to the real customer. */
 export function groupInvoiceRows(customersByCode: Map<string, Customer>, rows: CsvRow[]): CsvImportGroup<InvoiceGroupInsert>[] {

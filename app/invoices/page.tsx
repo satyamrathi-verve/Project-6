@@ -12,6 +12,7 @@ import { TableSkeleton } from "@/components/Skeleton";
 import { useToast } from "@/components/Toast";
 import { isConfigured, supabase } from "@/lib/supabase";
 import { money, formatDate } from "@/lib/format";
+import { addDays, effectiveStatus, outstandingOf, type InvoiceWithAllocations } from "@/lib/receivables";
 import type { CsvRow } from "@/lib/csv";
 import {
   INVOICE_CSV_TEMPLATE_HEADERS,
@@ -19,7 +20,7 @@ import {
   groupInvoiceRows,
   importInvoices,
 } from "@/lib/csvImportInvoices";
-import type { Customer, Invoice, InvoiceItem, InvoiceStatus } from "@/lib/types";
+import type { Customer, InvoiceItem, InvoiceStatus } from "@/lib/types";
 
 /*
   Sales Invoice — List. "+ New Invoice" opens the punch/edit form inline above
@@ -31,8 +32,9 @@ import type { Customer, Invoice, InvoiceItem, InvoiceStatus } from "@/lib/types"
   left out here rather than inventing one — ask the team if that field is needed.
 */
 
-type InvoiceRow = Invoice & {
+type InvoiceRow = InvoiceWithAllocations & {
   customer: { name: string; code: string } | null;
+  liveStatus: InvoiceStatus;
 };
 
 type SortKey = "invoice_no" | "invoice_date" | "due_date" | "customer" | "total" | "notes" | "status";
@@ -60,7 +62,7 @@ function compareInvoices(a: InvoiceRow, b: InvoiceRow, key: SortKey): number {
     case "notes":
       return (a.notes ?? "").localeCompare(b.notes ?? "");
     case "status":
-      return a.status.localeCompare(b.status);
+      return a.liveStatus.localeCompare(b.liveStatus);
   }
 }
 
@@ -91,12 +93,6 @@ function emptyInvoiceForm(): InvoiceFormState {
     status: "open",
     items: [{ ...EMPTY_LINE }],
   };
-}
-
-function computeDueDate(dateString: string, creditDays: number) {
-  const date = new Date(dateString);
-  date.setDate(date.getDate() + creditDays);
-  return date.toISOString().slice(0, 10);
 }
 
 export default function InvoiceListPage() {
@@ -135,9 +131,14 @@ export default function InvoiceListPage() {
     }
     const { data } = await supabase
       .from("invoices")
-      .select("*, customer:customers(name, code)")
+      .select("*, customer:customers(name, code), receipt_allocations(amount)")
       .order("invoice_date", { ascending: false });
-    setInvoices((data as unknown as InvoiceRow[]) ?? []);
+    const raw = (data as unknown as (InvoiceWithAllocations & { customer: { name: string; code: string } | null })[]) ?? [];
+    const rows: InvoiceRow[] = raw.map((invoice) => ({
+      ...invoice,
+      liveStatus: effectiveStatus(invoice, outstandingOf(invoice)),
+    }));
+    setInvoices(rows);
     setLoading(false);
   }
 
@@ -165,14 +166,25 @@ export default function InvoiceListPage() {
     return map;
   }, [csvCustomers]);
 
-  // Due date auto-fills from the selected customer's credit days.
+  // Due date auto-fills from the selected customer's credit days, but only
+  // when punching a *new* invoice — editing an existing one must not
+  // silently shift its due date just because the customer's credit_days
+  // changed since it was created.
   useEffect(() => {
+    if (selectedId) return;
     if (!form.customer_id) return;
     const customer = customersById.get(form.customer_id);
     if (!customer) return;
-    const due = computeDueDate(form.invoice_date, customer.credit_days);
+    const due = addDays(form.invoice_date, customer.credit_days);
     setForm((current) => ({ ...current, due_date: due }));
-  }, [form.customer_id, form.invoice_date, customersById]);
+  }, [form.customer_id, form.invoice_date, customersById, selectedId]);
+
+  // Don't offer inactive customers for new invoices, but keep the current
+  // one selectable when editing an invoice already billed to them.
+  const selectableCustomers = useMemo(
+    () => csvCustomers.filter((customer) => customer.status !== "inactive" || customer.id === form.customer_id),
+    [csvCustomers, form.customer_id]
+  );
 
   function handleGroupInvoiceRows(rows: CsvRow[]) {
     return groupInvoiceRows(customersByCode, rows);
@@ -225,7 +237,7 @@ export default function InvoiceListPage() {
           (!maxDueDate || inv.due_date <= maxDueDate) &&
           (min === null || total >= min) &&
           (max === null || total <= max) &&
-          (status === "all" || inv.status === status)
+          (status === "all" || inv.liveStatus === status)
         );
       })
       .sort((a, b) => {
@@ -357,8 +369,11 @@ export default function InvoiceListPage() {
         const { error: invoiceError } = await supabase.from("invoices").update(payload).eq("id", selectedId);
         if (invoiceError) throw invoiceError;
 
-        const { error: deleteError } = await supabase.from("invoice_items").delete().eq("invoice_id", selectedId);
-        if (deleteError) throw deleteError;
+        // Insert the new line items before deleting the old ones, and delete
+        // the old ones by id (not by invoice_id) — if the insert fails, the
+        // original items are still there instead of the invoice being left
+        // with an updated total but zero line items.
+        const originalItemIds = form.items.map((item) => item.id).filter(Boolean);
 
         if (form.items.length > 0) {
           const itemsToSave = form.items.map((item) => ({
@@ -371,10 +386,20 @@ export default function InvoiceListPage() {
           const { error: insertItemsError } = await supabase.from("invoice_items").insert(itemsToSave);
           if (insertItemsError) throw insertItemsError;
         }
+
+        if (originalItemIds.length > 0) {
+          const { error: deleteError } = await supabase.from("invoice_items").delete().in("id", originalItemIds);
+          if (deleteError) throw deleteError;
+        }
       } else {
+        // A backdated invoice date + short credit terms can produce a due
+        // date already in the past — reflect that in the initial status
+        // instead of always starting "open".
+        const initialStatus = effectiveStatus({ status: "open", due_date: form.due_date }, totals.total);
+
         const { data: insertedInvoice, error: insertError } = await supabase
           .from("invoices")
-          .insert({ ...payload, status: "open" })
+          .insert({ ...payload, status: initialStatus })
           .select("id")
           .single();
         if (insertError || !insertedInvoice) throw insertError ?? new Error("Could not create invoice.");
@@ -567,7 +592,7 @@ export default function InvoiceListPage() {
       key: "status",
       header: "Status",
       sortable: true,
-      render: (r) => <StatusBadge status={r.status} />,
+      render: (r) => <StatusBadge status={r.liveStatus} />,
       filter: (close) => (
         <div className="flex flex-col gap-1">
           {STATUS_FILTERS.map((f) => (
@@ -652,9 +677,10 @@ export default function InvoiceListPage() {
                     className={inputClass}
                   >
                     <option value="">— pick a customer —</option>
-                    {csvCustomers.map((c) => (
+                    {selectableCustomers.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
+                        {c.status === "inactive" ? " (inactive)" : ""}
                       </option>
                     ))}
                   </select>
@@ -672,7 +698,17 @@ export default function InvoiceListPage() {
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <FormField label="Due date">
-                  <input value={form.due_date} readOnly className={`${inputClass} bg-slate-100`} />
+                  {selectedId ? (
+                    <input
+                      type="date"
+                      required
+                      value={form.due_date}
+                      onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
+                      className={inputClass}
+                    />
+                  ) : (
+                    <input value={form.due_date} readOnly className={`${inputClass} bg-slate-100`} />
+                  )}
                 </FormField>
                 <FormField label="Tax amount">
                   <input
@@ -712,6 +748,7 @@ export default function InvoiceListPage() {
                     >
                       <FormField label="Description">
                         <input
+                          required
                           value={item.description}
                           onChange={(e) => handleChangeItem(index, "description", e.target.value)}
                           className={inputClass}
@@ -720,8 +757,10 @@ export default function InvoiceListPage() {
                       </FormField>
                       <FormField label="Qty">
                         <input
+                          required
                           type="number"
-                          min="0"
+                          min="0.01"
+                          step="any"
                           value={item.qty}
                           onChange={(e) => handleChangeItem(index, "qty", e.target.value)}
                           className={inputClass}
@@ -729,8 +768,10 @@ export default function InvoiceListPage() {
                       </FormField>
                       <FormField label="Rate">
                         <input
+                          required
                           type="number"
                           min="0"
+                          step="any"
                           value={item.rate}
                           onChange={(e) => handleChangeItem(index, "rate", e.target.value)}
                           className={inputClass}

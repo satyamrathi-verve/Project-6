@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Skeleton } from "@/components/Skeleton";
 import { isConfigured, supabase } from "@/lib/supabase";
 import { money, formatDate } from "@/lib/format";
+import { effectiveStatus, outstandingOf } from "@/lib/receivables";
 import type { Customer, Invoice, InvoiceItem } from "@/lib/types";
 
 /*
@@ -101,7 +102,8 @@ export default function InvoiceViewPage() {
   }
 
   const received = allocations.reduce((sum, a) => sum + Number(a.amount), 0);
-  const outstanding = Number(invoice.total) - received;
+  const outstanding = outstandingOf({ ...invoice, receipt_allocations: allocations });
+  const liveStatus = effectiveStatus(invoice, outstanding);
 
   const itemColumns: Column<InvoiceItem>[] = [
     { key: "description", header: "Description" },
@@ -162,7 +164,7 @@ export default function InvoiceViewPage() {
         <div className="rounded-xl border border-slate-200 bg-white p-4">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Status</p>
           <div className="mt-2">
-            <StatusBadge status={invoice.status} />
+            <StatusBadge status={liveStatus} />
           </div>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4">
