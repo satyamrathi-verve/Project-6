@@ -16,7 +16,7 @@ import type { ReminderLog, ReminderTemplate, Company } from "@/lib/types";
 type AgingBucket = "Not due" | "0-30 days" | "31-60 days" | "61-90 days" | "90+ days";
 
 type OverdueRow = InvoiceWithAllocations & {
-  customers?: { name: string } | null;
+  customers?: { name: string; email: string | null } | null;
   balance_due: number;
   aging_bucket: AgingBucket;
   days_overdue: number;
@@ -25,6 +25,42 @@ type OverdueRow = InvoiceWithAllocations & {
 type LogEntry = ReminderLog & {
   invoices?: { invoice_no: string; customer_id: string; customers?: { name: string } | null } | null;
 };
+
+const TOUCHPOINT_TYPES = [
+  { value: "called", label: "Called customer" },
+  { value: "promised", label: "Promised to pay" },
+  { value: "disputed", label: "Disputed" },
+  { value: "note", label: "Note" },
+] as const;
+type TouchpointType = (typeof TOUCHPOINT_TYPES)[number]["value"];
+
+const touchpointLabel: Record<string, string> = {
+  sent: "Reminder sent",
+  called: "Called customer",
+  promised: "Promised to pay",
+  disputed: "Disputed",
+  note: "Note",
+};
+
+const touchpointClass: Record<string, string> = {
+  sent: "bg-slate-100 text-slate-600",
+  called: "bg-blue-100 text-blue-700",
+  promised: "bg-emerald-100 text-emerald-700",
+  disputed: "bg-rose-100 text-rose-700",
+  note: "bg-slate-100 text-slate-600",
+};
+
+// How often an account should get its next reminder, based on how overdue it
+// is — the more overdue, the tighter the follow-up cadence.
+const CADENCE_HOURS: Record<AgingBucket, number> = {
+  "Not due": Infinity,
+  "0-30 days": 7 * 24,
+  "31-60 days": 5 * 24,
+  "61-90 days": 3 * 24,
+  "90+ days": 2 * 24,
+};
+
+type FollowUpStatus = "never" | "due" | "on_track";
 
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString("en-IN", {
@@ -82,6 +118,11 @@ export default function AutoEmailShootPage() {
   const [sortKey, setSortKey] = useState<string>("aging_bucket");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [confirmDuplicates, setConfirmDuplicates] = useState(false);
+  const [touchpointInvoice, setTouchpointInvoice] = useState<OverdueRow | null>(null);
+  const [touchpointType, setTouchpointType] = useState<TouchpointType>("called");
+  const [touchpointNote, setTouchpointNote] = useState("");
+  const [touchpointDate, setTouchpointDate] = useState("");
+  const [savingTouchpoint, setSavingTouchpoint] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -97,7 +138,7 @@ export default function AutoEmailShootPage() {
         supabase.from("company").select("*").limit(1).maybeSingle(),
         supabase
           .from("invoices")
-          .select("*, customers(name), receipt_allocations(amount)")
+          .select("*, customers(name, email), receipt_allocations(amount)")
           .in("status", ["open", "partial", "overdue"])
           .lt("due_date", today)
           .order("due_date", { ascending: true }),
@@ -119,7 +160,9 @@ export default function AutoEmailShootPage() {
       }
 
       if (!overdueRes.error && overdueRes.data) {
-        const invoices = overdueRes.data as (InvoiceWithAllocations & { customers?: { name: string } | null })[];
+        const invoices = overdueRes.data as (InvoiceWithAllocations & {
+          customers?: { name: string; email: string | null } | null;
+        })[];
         const rows: OverdueRow[] = invoices
           .map((invoice) => {
             const days = daysOverdue(invoice.due_date);
@@ -170,13 +213,36 @@ export default function AutoEmailShootPage() {
     });
   }, [overdueInvoices, customerFilter, invoiceNoFilter]);
 
-  // Selecting "all" by default when the filter changes keeps the common case
-  // (send to everyone in view) a single click, while still letting the
-  // collector uncheck specific invoices before sending.
+  const touchpointsByInvoiceId = useMemo(() => {
+    return log.reduce((acc: Record<string, LogEntry[]>, entry) => {
+      if (!entry.invoice_id) return acc;
+      (acc[entry.invoice_id] ||= []).push(entry);
+      return acc;
+    }, {});
+  }, [log]);
+
+  // Only actual sent email reminders count toward "recently reminded" — a
+  // logged phone call or note shouldn't trigger the duplicate-email guard.
+  function lastSentReminder(invoiceId: string): LogEntry | null {
+    const entries = touchpointsByInvoiceId[invoiceId];
+    if (!entries) return null;
+    return entries.find((entry) => entry.status === "sent") ?? null;
+  }
+
+  function followUpStatus(row: OverdueRow): FollowUpStatus {
+    const last = lastSentReminder(row.id);
+    if (!last) return "never";
+    return hoursSince(last.sent_at) >= CADENCE_HOURS[row.aging_bucket] ? "due" : "on_track";
+  }
+
+  // Pre-select invoices that are due (or never reminded) so the common case —
+  // work through what's actually due today — is a single click, while
+  // recently-reminded invoices are left unchecked to avoid over-contacting.
   useEffect(() => {
-    setSelectedIds(new Set(filteredInvoices.map((invoice) => invoice.id)));
+    const dueIds = filteredInvoices.filter((invoice) => followUpStatus(invoice) !== "on_track").map((invoice) => invoice.id);
+    setSelectedIds(new Set(dueIds));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerFilter, invoiceNoFilter, overdueInvoices]);
+  }, [customerFilter, invoiceNoFilter, overdueInvoices, touchpointsByInvoiceId]);
 
   const selectedInvoices = useMemo(
     () => filteredInvoices.filter((invoice) => selectedIds.has(invoice.id)),
@@ -211,27 +277,13 @@ export default function AutoEmailShootPage() {
     [filteredInvoices, selectedInvoices]
   );
 
-  const remindersByInvoiceId = useMemo(() => {
-    return log.reduce((acc: Record<string, LogEntry[]>, entry) => {
-      if (!entry.invoice_id) return acc;
-      (acc[entry.invoice_id] ||= []).push(entry);
-      return acc;
-    }, {});
-  }, [log]);
-
-  function lastReminderHours(invoiceId: string): number | null {
-    const entries = remindersByInvoiceId[invoiceId];
-    if (!entries || entries.length === 0) return null;
-    return hoursSince(entries[0].sent_at);
-  }
-
   const duplicateSelected = useMemo(
     () =>
       selectedInvoices.filter((invoice) => {
-        const hours = lastReminderHours(invoice.id);
-        return hours !== null && hours < RECENT_REMINDER_HOURS;
+        const last = lastSentReminder(invoice.id);
+        return last !== null && hoursSince(last.sent_at) < RECENT_REMINDER_HOURS;
       }),
-    [selectedInvoices, remindersByInvoiceId]
+    [selectedInvoices, touchpointsByInvoiceId]
   );
 
   function toggleSort(key: string) {
@@ -255,7 +307,11 @@ export default function AutoEmailShootPage() {
         case "balance_due":
           return row.balance_due;
         case "reminders_sent":
-          return remindersByInvoiceId[row.id]?.length ?? 0;
+          return touchpointsByInvoiceId[row.id]?.length ?? 0;
+        case "follow_up_status": {
+          const rank: Record<FollowUpStatus, number> = { due: 2, never: 1, on_track: 0 };
+          return rank[followUpStatus(row)];
+        }
         default:
           return row.invoice_no;
       }
@@ -270,7 +326,7 @@ export default function AutoEmailShootPage() {
       }
       return (av - bv) * dir;
     });
-  }, [filteredInvoices, sortKey, sortDir, remindersByInvoiceId]);
+  }, [filteredInvoices, sortKey, sortDir, touchpointsByInvoiceId]);
 
   // Selecting an invoice shows its full audit trail; selecting a customer shows
   // their consolidated touchpoint history across invoices; otherwise, the recent log.
@@ -319,7 +375,7 @@ export default function AutoEmailShootPage() {
 
       return {
         invoice_id: invoice.id,
-        to_email: null,
+        to_email: invoice.customers?.email ?? null,
         subject: renderTemplate(selectedTemplate.subject || "", data),
         body: renderTemplate(selectedTemplate.body || "", data),
         status: "sent",
@@ -334,15 +390,57 @@ export default function AutoEmailShootPage() {
     } else {
       setMessage("Reminder emails logged successfully.");
       toast.success(`Logged reminders for ${logRows.length} overdue invoice${logRows.length === 1 ? "" : "s"}.`);
-      const { data: freshLog } = await supabase
-        .from("reminder_log")
-        .select("*, invoices(invoice_no, customer_id, customers(name))")
-        .order("sent_at", { ascending: false })
-        .limit(200);
-      setLog((freshLog as LogEntry[]) || []);
+      await refreshLog();
     }
 
     setSending(false);
+  }
+
+  async function refreshLog() {
+    if (!supabase) return;
+    const { data: freshLog } = await supabase
+      .from("reminder_log")
+      .select("*, invoices(invoice_no, customer_id, customers(name))")
+      .order("sent_at", { ascending: false })
+      .limit(200);
+    setLog((freshLog as LogEntry[]) || []);
+  }
+
+  function openTouchpointModal(row: OverdueRow) {
+    setTouchpointInvoice(row);
+    setTouchpointType("called");
+    setTouchpointNote("");
+    setTouchpointDate("");
+  }
+
+  async function saveTouchpoint() {
+    if (!supabase || !touchpointInvoice || !touchpointNote.trim()) return;
+    setSavingTouchpoint(true);
+
+    const typeLabel = TOUCHPOINT_TYPES.find((t) => t.value === touchpointType)?.label ?? "Note";
+    const body =
+      touchpointType === "promised" && touchpointDate
+        ? `${touchpointNote.trim()}\n\nPromised payment date: ${formatDate(touchpointDate)}`
+        : touchpointNote.trim();
+
+    const { error } = await supabase.from("reminder_log").insert({
+      invoice_id: touchpointInvoice.id,
+      to_email: null,
+      subject: `${typeLabel}: ${touchpointInvoice.invoice_no}`,
+      body,
+      status: touchpointType,
+      sent_at: new Date().toISOString(),
+    });
+
+    if (error) {
+      toast.error("Could not save that touchpoint. Please try again.");
+    } else {
+      toast.success("Touchpoint logged.");
+      setTouchpointInvoice(null);
+      await refreshLog();
+    }
+
+    setSavingTouchpoint(false);
   }
 
   const columns: Column<OverdueRow>[] = [
@@ -371,7 +469,16 @@ export default function AutoEmailShootPage() {
       key: "customer",
       header: "Customer account",
       sortable: true,
-      render: (row) => row.customers?.name ?? row.customer_id,
+      render: (row) => (
+        <div>
+          <div>{row.customers?.name ?? row.customer_id}</div>
+          {row.customers?.email ? (
+            <div className="text-xs text-slate-400">{row.customers.email}</div>
+          ) : (
+            <div className="text-xs text-rose-400">No email on file</div>
+          )}
+        </div>
+      ),
     },
     { key: "due_date", header: "Due date", sortable: true, render: (row) => formatDate(row.due_date) },
     {
@@ -391,23 +498,55 @@ export default function AutoEmailShootPage() {
       render: (row) => money.format(row.balance_due),
     },
     {
-      key: "reminders_sent",
-      header: "Reminders sent",
+      key: "follow_up_status",
+      header: "Follow-up",
       sortable: true,
       render: (row) => {
-        const entries = remindersByInvoiceId[row.id] || [];
-        if (entries.length === 0) return <span className="text-slate-400">None yet</span>;
-        const hours = hoursSince(entries[0].sent_at);
-        const isRecent = hours < RECENT_REMINDER_HOURS;
+        const status = followUpStatus(row);
+        const cfg: Record<FollowUpStatus, { label: string; cls: string }> = {
+          due: { label: "Due now", cls: "bg-amber-100 text-amber-700" },
+          never: { label: "Not yet reminded", cls: "bg-blue-100 text-blue-700" },
+          on_track: { label: "Recently reminded", cls: "bg-slate-100 text-slate-600" },
+        };
         return (
-          <span>
-            {entries.length} · last {formatDate(entries[0].sent_at)}
-            {isRecent && (
-              <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                Sent recently
-              </span>
+          <span className={`rounded-full px-2 py-1 text-xs font-semibold ${cfg[status].cls}`}>{cfg[status].label}</span>
+        );
+      },
+    },
+    {
+      key: "reminders_sent",
+      header: "Touchpoints",
+      sortable: true,
+      render: (row) => {
+        const entries = touchpointsByInvoiceId[row.id] || [];
+        const latest = entries[0];
+        const latestIsRecentSend = latest?.status === "sent" && hoursSince(latest.sent_at) < RECENT_REMINDER_HOURS;
+        return (
+          <div className="flex flex-wrap items-center gap-2">
+            {entries.length === 0 ? (
+              <span className="text-slate-400">None yet</span>
+            ) : (
+              <>
+                <span className="text-slate-600">
+                  {entries.length} · last {formatDate(latest.sent_at)}
+                </span>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                    latestIsRecentSend ? "bg-amber-100 text-amber-700" : touchpointClass[latest.status] ?? "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {latestIsRecentSend ? "Sent recently" : touchpointLabel[latest.status] ?? latest.status}
+                </span>
+              </>
             )}
-          </span>
+            <button
+              type="button"
+              onClick={() => openTouchpointModal(row)}
+              className="text-xs font-medium text-brand hover:underline"
+            >
+              + Log
+            </button>
+          </div>
         );
       },
     },
@@ -463,7 +602,7 @@ export default function AutoEmailShootPage() {
                 <div>
                   <h3 className="text-lg font-semibold text-slate-900">Overdue invoices</h3>
                   <p className="text-sm text-slate-500">
-                    Check the invoices you want to remind, then send.
+                    Invoices due for their next reminder are pre-selected; recently reminded ones are left unchecked.
                   </p>
                 </div>
                 <button
@@ -551,15 +690,26 @@ export default function AutoEmailShootPage() {
                 <h3 className="text-lg font-semibold text-slate-900">{historyTitle}</h3>
                 <div className="mt-4 space-y-3 text-sm text-slate-700">
                   {historyEntries.length === 0 ? (
-                    <p className="text-slate-500">No reminders have been logged yet.</p>
+                    <p className="text-slate-500">No touchpoints have been logged yet.</p>
                   ) : (
                     historyEntries.map((entry) => (
                       <div key={entry.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                        <p className="text-sm font-semibold text-slate-900">
-                          {entry.invoices?.invoice_no ?? entry.invoice_id} · {entry.invoices?.customers?.name ?? "Customer"}
-                        </p>
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-semibold text-slate-900">
+                            {entry.invoices?.invoice_no ?? entry.invoice_id} · {entry.invoices?.customers?.name ?? "Customer"}
+                          </p>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                              touchpointClass[entry.status] ?? "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {touchpointLabel[entry.status] ?? entry.status}
+                          </span>
+                        </div>
                         <p className="text-xs text-slate-500">{formatDateTime(entry.sent_at)}</p>
-                        <p className="mt-2 text-sm text-slate-700 line-clamp-2">{entry.subject}</p>
+                        <p className="mt-2 text-sm text-slate-700 line-clamp-2">
+                          {entry.status === "sent" ? entry.subject : entry.body}
+                        </p>
                       </div>
                     ))
                   )}
@@ -599,6 +749,67 @@ export default function AutoEmailShootPage() {
             >
               Send anyway
             </button>
+          </div>
+        </Modal>
+      )}
+
+      {touchpointInvoice && (
+        <Modal
+          title={`Log a touchpoint — ${touchpointInvoice.invoice_no}`}
+          onClose={() => setTouchpointInvoice(null)}
+        >
+          <div className="space-y-4">
+            <FormField label="Type">
+              <select
+                value={touchpointType}
+                onChange={(event) => setTouchpointType(event.target.value as TouchpointType)}
+                className={inputClass}
+              >
+                {TOUCHPOINT_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+
+            {touchpointType === "promised" && (
+              <FormField label="Promise date">
+                <input
+                  type="date"
+                  value={touchpointDate}
+                  onChange={(event) => setTouchpointDate(event.target.value)}
+                  className={inputClass}
+                />
+              </FormField>
+            )}
+
+            <FormField label="Note">
+              <textarea
+                value={touchpointNote}
+                onChange={(event) => setTouchpointNote(event.target.value)}
+                className={`${inputClass} min-h-[100px] resize-y`}
+                placeholder="What happened? e.g. Spoke with accounts team, payment expected next week."
+              />
+            </FormField>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setTouchpointInvoice(null)}
+                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveTouchpoint}
+                disabled={savingTouchpoint || !touchpointNote.trim()}
+                className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {savingTouchpoint ? "Saving..." : "Save"}
+              </button>
+            </div>
           </div>
         </Modal>
       )}
