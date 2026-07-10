@@ -486,14 +486,19 @@ export default function DashboardPage() {
 
             <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 transition-shadow hover:shadow-md">
               <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400">Average Collection Period by Customer</h3>
-              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Slowest 5 payers, average days from invoice to payment</p>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                Slowest {avgCollectionPeriod.length} payer{avgCollectionPeriod.length === 1 ? "" : "s"}, average days from invoice to payment
+              </p>
               {avgCollectionPeriod.length === 0 ? (
                 <p className="mt-4 text-sm text-slate-400 dark:text-slate-500">No paid invoices yet.</p>
               ) : (
                 <ul className="mt-3 divide-y divide-slate-100 dark:divide-slate-700/60">
                   {avgCollectionPeriod.map((c) => (
                     <li key={c.customerId} className="flex items-center justify-between py-2">
-                      <Link href="/reports/statement" className="text-sm font-medium text-brand hover:underline">
+                      <Link
+                        href={`/reports/statement?customer=${c.customerId}`}
+                        className="text-sm font-medium text-brand hover:underline"
+                      >
                         {c.name}
                       </Link>
                       <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{c.avgDays} days</span>

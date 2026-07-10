@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { FormField, inputClass } from "@/components/FormField";
 import { DataTable, type Column } from "@/components/DataTable";
@@ -40,8 +41,9 @@ const FILTERS: { value: FilterValue; label: string }[] = [
 ];
 
 export default function CustomerStatementPage() {
+  const searchParams = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [customerId, setCustomerId] = useState("");
+  const [customerId, setCustomerId] = useState(searchParams.get("customer") ?? "");
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [loading, setLoading] = useState(false);
