@@ -22,7 +22,7 @@ const DEMO_LOGINS = [
 const HIGHLIGHTS = [
   "Live outstanding on every customer",
   "Ageing, cashflow, and DSO at a glance",
-  "Reminder emails & collection tracking",
+  "Follow-ups, calls, and payment promises — all logged",
 ];
 
 export default function SignInPage() {
