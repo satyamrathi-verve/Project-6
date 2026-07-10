@@ -97,17 +97,17 @@ export function CsvImport<T>({
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-          <p className="mt-1 text-sm text-slate-500">{description}</p>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p>
         </div>
         <div className="flex flex-none flex-wrap gap-2">
           <button
             type="button"
             onClick={handleDownloadTemplate}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
           >
             Download sample CSV
           </button>
@@ -120,17 +120,17 @@ export function CsvImport<T>({
 
       {fileName && (
         <div className="mt-4 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-400">
             <span>
-              <span className="font-medium text-slate-800">{fileName}</span> — {groups.length} row(s) found,{" "}
-              <span className="text-emerald-600">{validCount} ready</span>
-              {errorCount > 0 && <span className="text-rose-600">, {errorCount} with errors</span>}
+              <span className="font-medium text-slate-800 dark:text-slate-200">{fileName}</span> — {groups.length} row(s) found,{" "}
+              <span className="text-emerald-600 dark:text-emerald-400">{validCount} ready</span>
+              {errorCount > 0 && <span className="text-rose-600 dark:text-rose-400">, {errorCount} with errors</span>}
             </span>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={handleReset}
-                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-white"
+                className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-white dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 Clear
               </button>
@@ -146,29 +146,29 @@ export function CsvImport<T>({
           </div>
 
           {groups.length > 0 && (
-            <div className="max-h-80 overflow-y-auto rounded-lg border border-slate-200">
+            <div className="max-h-80 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-slate-50">
-                  <tr className="border-b border-slate-200 text-left">
-                    <th className="px-4 py-2 font-semibold text-slate-600">Row</th>
-                    <th className="px-4 py-2 font-semibold text-slate-600">Status</th>
+                <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900">
+                  <tr className="border-b border-slate-200 text-left dark:border-slate-700">
+                    <th className="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300">Row</th>
+                    <th className="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {groups.map((g) => {
                     const result = results[g.key];
                     return (
-                      <tr key={g.key} className="border-b border-slate-100 last:border-0">
-                        <td className="px-4 py-2 text-slate-700">{g.label}</td>
+                      <tr key={g.key} className="border-b border-slate-100 last:border-0 dark:border-slate-700/60">
+                        <td className="px-4 py-2 text-slate-700 dark:text-slate-300">{g.label}</td>
                         <td className="px-4 py-2">
                           {result ? (
-                            <span className={result.ok ? "text-emerald-600" : "text-rose-600"}>
+                            <span className={result.ok ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}>
                               {result.ok ? `Imported — ${result.message}` : result.message}
                             </span>
                           ) : g.errors.length > 0 ? (
-                            <span className="text-rose-600">{g.errors.join("; ")}</span>
+                            <span className="text-rose-600 dark:text-rose-400">{g.errors.join("; ")}</span>
                           ) : (
-                            <span className="text-slate-400">Ready to import</span>
+                            <span className="text-slate-400 dark:text-slate-500">Ready to import</span>
                           )}
                         </td>
                       </tr>

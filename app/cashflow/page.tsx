@@ -188,7 +188,7 @@ export default function CashflowPage() {
       className: colWidth,
       filter: () => (
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Search invoice #</label>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Search invoice #</label>
           <input
             className={`${inputClass} w-full`}
             placeholder="e.g. INV-0007"
@@ -205,7 +205,7 @@ export default function CashflowPage() {
       className: colWidth,
       filter: () => (
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Search customer</label>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Search customer</label>
           <input
             className={`${inputClass} w-full`}
             placeholder="Type to search…"
@@ -294,7 +294,7 @@ export default function CashflowPage() {
             <button
               type="button"
               onClick={() => setAdjustments({})}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50"
             >
               Reset all adjustments
             </button>
@@ -313,7 +313,7 @@ export default function CashflowPage() {
         </div>
       ) : (
         <>
-          <div className="mb-6 h-72 rounded-xl border border-slate-200 bg-white p-4">
+          <div className="mb-6 h-72 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={dateBuckets}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -351,7 +351,7 @@ export default function CashflowPage() {
           </div>
 
           <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-slate-600">Daily Projection</h3>
+            <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400">Daily Projection</h3>
             <button
               type="button"
               onClick={() => setDetailExpanded((v) => !v)}
@@ -361,20 +361,20 @@ export default function CashflowPage() {
             </button>
           </div>
 
-          <div className="max-h-[480px] overflow-auto rounded-xl border border-slate-200 bg-white">
+          <div className="max-h-[480px] overflow-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
             <table className="w-full table-fixed text-sm">
               <thead>
                 <tr className="text-left">
-                  <th className="sticky top-0 left-0 z-30 w-44 border-b border-r border-slate-200 bg-slate-50 px-4 py-3 font-semibold text-slate-600">
+                  <th className="sticky top-0 left-0 z-30 w-44 border-b border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">
                     Customer Name
                   </th>
-                  <th className="sticky top-0 left-44 z-30 w-32 border-b border-r border-slate-200 bg-slate-50 px-4 py-3 font-semibold text-slate-600">
+                  <th className="sticky top-0 left-44 z-30 w-32 border-b border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 px-4 py-3 font-semibold text-slate-600 dark:text-slate-400">
                     Invoice No
                   </th>
                   {dateBuckets.map((d) => (
                     <th
                       key={d.date}
-                      className="sticky top-0 z-20 w-32 border-b border-slate-200 bg-slate-50 px-4 py-3 text-right font-semibold text-slate-600"
+                      className="sticky top-0 z-20 w-32 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 px-4 py-3 text-right font-semibold text-slate-600 dark:text-slate-400"
                     >
                       {formatDate(d.date)}
                     </th>
@@ -384,21 +384,21 @@ export default function CashflowPage() {
               <tbody>
                 {pivotRows.length === 0 ? (
                   <tr>
-                    <td colSpan={2 + dateBuckets.length} className="px-4 py-10 text-center text-slate-400">
+                    <td colSpan={2 + dateBuckets.length} className="px-4 py-10 text-center text-slate-400 dark:text-slate-500">
                       No open invoices.
                     </td>
                   </tr>
                 ) : detailExpanded ? (
                   pivotRows.map((row) => (
-                    <tr key={row.id} className="group border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                      <td className="sticky left-0 z-10 w-44 border-r border-slate-100 bg-white px-4 py-3 text-slate-700 group-hover:bg-slate-50">
+                    <tr key={row.id} className="group border-b border-slate-100 dark:border-slate-700/60 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                      <td className="sticky left-0 z-10 w-44 border-r border-slate-100 dark:border-slate-700/60 bg-white dark:bg-slate-800 px-4 py-3 text-slate-700 dark:text-slate-300 group-hover:bg-slate-50 dark:hover:bg-slate-700/50 dark:group-hover:bg-slate-700/50">
                         {row.customerName}
                       </td>
-                      <td className="sticky left-44 z-10 w-32 border-r border-slate-100 bg-white px-4 py-3 text-slate-700 group-hover:bg-slate-50">
+                      <td className="sticky left-44 z-10 w-32 border-r border-slate-100 dark:border-slate-700/60 bg-white dark:bg-slate-800 px-4 py-3 text-slate-700 dark:text-slate-300 group-hover:bg-slate-50 dark:hover:bg-slate-700/50 dark:group-hover:bg-slate-700/50">
                         {row.invoiceNo}
                       </td>
                       {dateBuckets.map((d) => (
-                        <td key={d.date} className="px-4 py-3 text-right text-slate-700">
+                        <td key={d.date} className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">
                           {row.amounts[d.date] ? money.format(row.amounts[d.date]) : ""}
                         </td>
                       ))}
@@ -406,7 +406,7 @@ export default function CashflowPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={2 + dateBuckets.length} className="px-4 py-2 text-center text-xs text-slate-400">
+                    <td colSpan={2 + dateBuckets.length} className="px-4 py-2 text-center text-xs text-slate-400 dark:text-slate-500">
                       {pivotRows.length} invoice{pivotRows.length === 1 ? "" : "s"} across{" "}
                       {new Set(pivotRows.map((r) => r.customerName)).size} customer(s) — click &ldquo;Show
                       customer/invoice detail&rdquo; to expand.
@@ -416,8 +416,8 @@ export default function CashflowPage() {
               </tbody>
               {dateBuckets.length > 0 && (
                 <tfoot>
-                  <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold text-slate-900">
-                    <td className="sticky left-0 z-10 bg-slate-50 px-4 py-3" colSpan={2}>
+                  <tr className="border-t-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/40 font-semibold text-slate-900 dark:text-slate-100">
+                    <td className="sticky left-0 z-10 bg-slate-50 dark:bg-slate-900/40 px-4 py-3" colSpan={2}>
                       Daily Collection
                     </td>
                     {dateBuckets.map((d) => (
@@ -426,8 +426,8 @@ export default function CashflowPage() {
                       </td>
                     ))}
                   </tr>
-                  <tr className="bg-slate-50 font-semibold text-slate-900">
-                    <td className="sticky left-0 z-10 bg-slate-50 px-4 py-3" colSpan={2}>
+                  <tr className="bg-slate-50 dark:bg-slate-900/40 font-semibold text-slate-900 dark:text-slate-100">
+                    <td className="sticky left-0 z-10 bg-slate-50 dark:bg-slate-900/40 px-4 py-3" colSpan={2}>
                       Cumulative Collections
                     </td>
                     {dateBuckets.map((d) => (
@@ -441,7 +441,7 @@ export default function CashflowPage() {
             </table>
           </div>
 
-          <h3 className="mb-2 mt-8 text-sm font-semibold text-slate-600">Adjust Expected Collections</h3>
+          <h3 className="mb-2 mt-8 text-sm font-semibold text-slate-600 dark:text-slate-400">Adjust Expected Collections</h3>
           <DataTable
             columns={invoiceColumns}
             rows={filteredAdjustable}

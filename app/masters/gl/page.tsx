@@ -179,8 +179,8 @@ export default function GLMasterPage() {
       {isConfigured && (
         <>
           {showForm && (
-            <section className="mb-6 rounded-xl border border-slate-200 bg-white p-6">
-              <h3 className="mb-4 text-lg font-semibold text-slate-900">
+            <section className="mb-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
+              <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
                 {editingId ? "Edit Account" : "Add Account"}
               </h3>
 
@@ -257,14 +257,14 @@ export default function GLMasterPage() {
                   <button
                     type="button"
                     onClick={clearForm}
-                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50"
                   >
                     Clear
                   </button>
                   <button
                     type="button"
                     onClick={resetForm}
-                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50"
                   >
                     Cancel
                   </button>
@@ -273,8 +273,8 @@ export default function GLMasterPage() {
             </section>
           )}
 
-          <div className="rounded-xl border border-slate-200 bg-white p-6">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Ledger accounts
             </h3>
             {loading ? (

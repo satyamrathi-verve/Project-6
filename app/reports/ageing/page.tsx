@@ -288,7 +288,7 @@ export default function AgeingReportPage() {
           <button
             type="button"
             onClick={() => window.print()}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 print:hidden"
+            className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 print:hidden"
           >
             Print
           </button>
@@ -314,7 +314,7 @@ export default function AgeingReportPage() {
             onSort={toggleSort}
             rowClassName={(r) => (r.b90plus > 0 ? "bg-rose-50/50" : "")}
             footerRow={
-              <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold text-slate-900">
+              <tr className="border-t-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/40 font-semibold text-slate-900 dark:text-slate-100">
                 <td className="px-4 py-3">Total</td>
                 <td className="px-4 py-3 text-right">{money.format(grandTotal.notDue)}</td>
                 <td className="px-4 py-3 text-right">{money.format(grandTotal.b0_30)}</td>

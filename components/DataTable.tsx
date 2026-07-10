@@ -57,14 +57,14 @@ export function DataTable<T extends { id: string }>({
   const hasFilters = columns.some((c) => c.filter);
 
   return (
-    <div className={`rounded-xl border border-slate-200 bg-white ${hasFilters ? "" : "overflow-hidden"}`}>
+    <div className={`rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 ${hasFilters ? "" : "overflow-hidden"}`}>
       <table className={`w-full text-sm ${tableClassName ?? ""}`}>
         <thead>
-          <tr className="border-b border-slate-200 bg-slate-50 text-left">
+          <tr className="border-b border-slate-200 bg-slate-50 text-left dark:border-slate-700 dark:bg-slate-900/40">
             {columns.map((c, i) => (
               <th
                 key={c.key}
-                className={`relative px-4 py-3 font-semibold text-slate-600 ${
+                className={`relative px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 ${
                   i === 0 ? "rounded-tl-xl" : ""
                 } ${i === columns.length - 1 ? "rounded-tr-xl" : ""} ${c.className ?? ""}`}
               >
@@ -73,10 +73,10 @@ export function DataTable<T extends { id: string }>({
                     <button
                       type="button"
                       onClick={() => onSort(c.key)}
-                      className="inline-flex items-center gap-1 hover:text-slate-900"
+                      className="inline-flex items-center gap-1 hover:text-slate-900 dark:hover:text-slate-100"
                     >
                       {c.header}
-                      <span className="w-3 text-[10px] text-slate-400">
+                      <span className="w-3 text-[10px] text-slate-400 dark:text-slate-500">
                         {sortKey === c.key ? (sortDir === "asc" ? "▲" : "▼") : "↕"}
                       </span>
                     </button>
@@ -88,8 +88,8 @@ export function DataTable<T extends { id: string }>({
                       type="button"
                       onClick={() => setOpenFilter(openFilter === c.key ? null : c.key)}
                       aria-label={`Filter ${c.header}`}
-                      className={`rounded p-1 hover:bg-slate-200 ${
-                        openFilter === c.key ? "bg-slate-200 text-slate-900" : "text-slate-400"
+                      className={`rounded p-1 hover:bg-slate-200 dark:hover:bg-slate-700 ${
+                        openFilter === c.key ? "bg-slate-200 text-slate-900 dark:bg-slate-700 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"
                       }`}
                     >
                       <FilterIcon />
@@ -97,7 +97,7 @@ export function DataTable<T extends { id: string }>({
                   )}
                 </div>
                 {c.filter && openFilter === c.key && (
-                  <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border border-slate-200 bg-white p-3 font-normal normal-case tracking-normal text-slate-700 shadow-lg">
+                  <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border border-slate-200 bg-white p-3 font-normal normal-case tracking-normal text-slate-700 shadow-lg dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                     {c.filter(() => setOpenFilter(null))}
                   </div>
                 )}
@@ -108,7 +108,7 @@ export function DataTable<T extends { id: string }>({
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="px-4 py-10 text-center text-slate-400">
+              <td colSpan={columns.length} className="px-4 py-10 text-center text-slate-400 dark:text-slate-500">
                 {empty}
               </td>
             </tr>
@@ -116,12 +116,12 @@ export function DataTable<T extends { id: string }>({
             rows.map((row) => (
               <tr
                 key={row.id}
-                className={`border-b border-slate-100 last:border-0 hover:bg-slate-50 ${
+                className={`border-b border-slate-100 last:border-0 hover:bg-slate-50 dark:border-slate-700/60 dark:hover:bg-slate-700/40 ${
                   rowClassName ? rowClassName(row) : ""
                 }`}
               >
                 {columns.map((c) => (
-                  <td key={c.key} className={`px-4 py-3 text-slate-700 ${c.className ?? ""}`}>
+                  <td key={c.key} className={`px-4 py-3 text-slate-700 dark:text-slate-300 ${c.className ?? ""}`}>
                     {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? "")}
                   </td>
                 ))}

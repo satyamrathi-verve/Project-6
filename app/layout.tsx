@@ -14,9 +14,20 @@ export const metadata: Metadata = {
   },
 };
 
+const themeInitScript = `
+  try {
+    if (localStorage.getItem("ar_theme") === "dark") {
+      document.documentElement.classList.add("dark");
+    }
+  } catch (e) {}
+`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={inter.variable}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body>
         <AppShell>{children}</AppShell>
       </body>

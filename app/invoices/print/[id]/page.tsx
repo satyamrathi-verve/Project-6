@@ -90,14 +90,14 @@ export default function InvoicePrintPreviewPage() {
   if (!isConfigured) return <NotConfigured />;
 
   if (loading) {
-    return <p className="py-10 text-center text-slate-400">Loading invoice preview…</p>;
+    return <p className="py-10 text-center text-slate-400 dark:text-slate-500">Loading invoice preview…</p>;
   }
 
   if (!invoice) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-10 text-center">
-        <p className="font-semibold text-slate-700">Invoice not found.</p>
-        <p className="mt-1 text-sm text-slate-500">The invoice may have been removed or the link is wrong.</p>
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-10 text-center">
+        <p className="font-semibold text-slate-700 dark:text-slate-300">Invoice not found.</p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">The invoice may have been removed or the link is wrong.</p>
         <Link href="/invoices" className="mt-4 inline-block text-sm font-medium text-brand hover:underline">
           ← Back to Sales Invoices
         </Link>
@@ -128,46 +128,46 @@ export default function InvoicePrintPreviewPage() {
         />
       </div>
 
-      <div className="print-shell rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 md:p-8">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:p-8">
-          <div className="flex flex-col gap-6 border-b border-slate-200 pb-6 md:flex-row md:items-start md:justify-between">
+      <div className="print-shell rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm sm:p-6 md:p-8">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-6 sm:p-8">
+          <div className="flex flex-col gap-6 border-b border-slate-200 dark:border-slate-700 pb-6 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">Tax Invoice</p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-900">{company?.name ?? "Verve Advisory"}</h2>
-              {company?.address && <p className="mt-1 text-sm text-slate-600">{company.address}</p>}
-              <div className="mt-2 space-y-1 text-sm text-slate-600">
+              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">Tax Invoice</p>
+              <h2 className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">{company?.name ?? "Verve Advisory"}</h2>
+              {company?.address && <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{company.address}</p>}
+              <div className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-400">
                 {company?.email && <p>{company.email}</p>}
                 {company?.phone && <p>{company.phone}</p>}
                 {company?.gstin && <p>GSTIN: {company.gstin}</p>}
               </div>
             </div>
 
-            <div className="min-w-[240px] rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700">
+            <div className="min-w-[240px] rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 text-sm text-slate-700 dark:text-slate-300">
               <div className="flex items-center justify-between gap-4 py-1">
-                <span className="text-slate-500">Invoice No.</span>
-                <span className="font-semibold text-slate-900">{invoice.invoice_no}</span>
+                <span className="text-slate-500 dark:text-slate-400">Invoice No.</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">{invoice.invoice_no}</span>
               </div>
               <div className="flex items-center justify-between gap-4 py-1">
-                <span className="text-slate-500">Invoice Date</span>
+                <span className="text-slate-500 dark:text-slate-400">Invoice Date</span>
                 <span>{formatDate(invoice.invoice_date)}</span>
               </div>
               <div className="flex items-center justify-between gap-4 py-1">
-                <span className="text-slate-500">Due Date</span>
+                <span className="text-slate-500 dark:text-slate-400">Due Date</span>
                 <span>{formatDate(invoice.due_date)}</span>
               </div>
               <div className="flex items-center justify-between gap-4 py-1">
-                <span className="text-slate-500">Status</span>
-                <span className="font-semibold uppercase text-slate-900">{liveStatus}</span>
+                <span className="text-slate-500 dark:text-slate-400">Status</span>
+                <span className="font-semibold uppercase text-slate-900 dark:text-slate-100">{liveStatus}</span>
               </div>
             </div>
           </div>
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.9fr]">
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Bill To</p>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">Bill To</p>
               {customer ? (
-                <div className="mt-3 space-y-1 text-sm text-slate-700">
-                  <p className="font-semibold text-slate-900">{customer.name}</p>
+                <div className="mt-3 space-y-1 text-sm text-slate-700 dark:text-slate-300">
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{customer.name}</p>
                   {customer.address && <p>{customer.address}</p>}
                   {customer.contact_person && <p>Contact: {customer.contact_person}</p>}
                   {customer.email && <p>{customer.email}</p>}
@@ -175,13 +175,13 @@ export default function InvoicePrintPreviewPage() {
                   {customer.gstin && <p>GSTIN: {customer.gstin}</p>}
                 </div>
               ) : (
-                <p className="mt-3 text-sm text-slate-400">Customer details unavailable.</p>
+                <p className="mt-3 text-sm text-slate-400 dark:text-slate-500">Customer details unavailable.</p>
               )}
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Amount Summary</p>
-              <div className="mt-3 space-y-2 text-sm text-slate-700">
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">Amount Summary</p>
+              <div className="mt-3 space-y-2 text-sm text-slate-700 dark:text-slate-300">
                 <div className="flex items-center justify-between">
                   <span>Subtotal</span>
                   <span>{money.format(Number(invoice.subtotal))}</span>
@@ -190,15 +190,15 @@ export default function InvoicePrintPreviewPage() {
                   <span>Tax</span>
                   <span>{money.format(Number(invoice.tax_amount))}</span>
                 </div>
-                <div className="flex items-center justify-between border-t border-slate-200 pt-2 font-semibold text-slate-900">
+                <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-2 font-semibold text-slate-900 dark:text-slate-100">
                   <span>Total</span>
                   <span>{money.format(Number(invoice.total))}</span>
                 </div>
-                <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-green-700">
+                <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-2 text-green-700">
                   <span>Received</span>
                   <span>− {money.format(received)}</span>
                 </div>
-                <div className="flex items-center justify-between border-t border-slate-200 pt-2 font-semibold text-red-600">
+                <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-2 font-semibold text-red-600">
                   <span>Amount Due</span>
                   <span>{money.format(outstanding)}</span>
                 </div>
@@ -206,9 +206,9 @@ export default function InvoicePrintPreviewPage() {
             </div>
           </div>
 
-          <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-left text-slate-600">
+          <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700 text-sm">
+              <thead className="bg-slate-50 dark:bg-slate-900/40 text-left text-slate-600 dark:text-slate-400">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Description</th>
                   <th className="px-4 py-3 font-semibold text-right">Qty</th>
@@ -216,7 +216,7 @@ export default function InvoicePrintPreviewPage() {
                   <th className="px-4 py-3 font-semibold text-right">Amount</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 text-slate-700">
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-700 text-slate-700 dark:text-slate-300">
                 {items.map((item) => (
                   <tr key={item.id}>
                     <td className="px-4 py-3">{item.description}</td>
@@ -227,7 +227,7 @@ export default function InvoicePrintPreviewPage() {
                 ))}
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-center text-slate-400">
+                    <td colSpan={4} className="px-4 py-6 text-center text-slate-400 dark:text-slate-500">
                       No line items found for this invoice.
                     </td>
                   </tr>
@@ -237,9 +237,9 @@ export default function InvoicePrintPreviewPage() {
           </div>
 
           {invoice.notes && (
-            <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Notes</p>
-              <p className="mt-2 text-sm text-slate-700">{invoice.notes}</p>
+            <div className="mt-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">Notes</p>
+              <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">{invoice.notes}</p>
             </div>
           )}
         </div>

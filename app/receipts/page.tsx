@@ -359,7 +359,7 @@ export default function ReceiptEntryPage() {
       sortable: true,
       filter: () => (
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Search receipt no</label>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Search receipt no</label>
           <input
             className={`${inputClass} w-full`}
             value={receiptNoSearch}
@@ -376,9 +376,9 @@ export default function ReceiptEntryPage() {
       render: (r) => formatDate(r.receipt_date),
       filter: () => (
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">From</label>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">From</label>
           <input type="date" className={inputClass} value={minDate} onChange={(e) => setMinDate(e.target.value)} />
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">To</label>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">To</label>
           <input type="date" className={inputClass} value={maxDate} onChange={(e) => setMaxDate(e.target.value)} />
         </div>
       ),
@@ -392,7 +392,7 @@ export default function ReceiptEntryPage() {
         const matches = customerNames.filter((n) => n.toLowerCase().includes(customerFilter.toLowerCase()));
         return (
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Search customer</label>
+            <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Search customer</label>
             <input
               className={`${inputClass} w-full`}
               placeholder="Type to search…"
@@ -402,7 +402,7 @@ export default function ReceiptEntryPage() {
             />
             <div className="max-h-40 overflow-y-auto">
               {matches.length === 0 ? (
-                <p className="px-1 py-1 text-xs text-slate-400">No matching customers.</p>
+                <p className="px-1 py-1 text-xs text-slate-400 dark:text-slate-500">No matching customers.</p>
               ) : (
                 matches.map((name) => (
                   <button
@@ -412,7 +412,7 @@ export default function ReceiptEntryPage() {
                       setCustomerFilter(name);
                       close();
                     }}
-                    className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-slate-100"
+                    className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-700"
                   >
                     {name}
                   </button>
@@ -440,14 +440,14 @@ export default function ReceiptEntryPage() {
       render: (r) => money.format(Number(r.amount)),
       filter: () => (
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Min amount</label>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Min amount</label>
           <input
             type="number"
             className={inputClass}
             value={minAmount}
             onChange={(e) => setMinAmount(e.target.value)}
           />
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Max amount</label>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Max amount</label>
           <input
             type="number"
             className={inputClass}
@@ -472,8 +472,8 @@ export default function ReceiptEntryPage() {
                 setModeFilter(m.value);
                 close();
               }}
-              className={`rounded px-2 py-1 text-left text-sm hover:bg-slate-100 ${
-                modeFilter === m.value ? "bg-slate-100 font-medium text-slate-900" : ""
+              className={`rounded px-2 py-1 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-700 ${
+                modeFilter === m.value ? "bg-slate-100 dark:bg-slate-700 font-medium text-slate-900 dark:text-slate-100" : ""
               }`}
             >
               {m.label}
@@ -489,7 +489,7 @@ export default function ReceiptEntryPage() {
       render: (r) => r.reference ?? "—",
       filter: () => (
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Search reference</label>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Search reference</label>
           <input
             className={`${inputClass} w-full`}
             value={referenceSearch}
@@ -518,8 +518,8 @@ export default function ReceiptEntryPage() {
       />
 
       {showForm && (
-        <section className="mb-6 rounded-xl border border-slate-200 bg-white p-6">
-          <h3 className="mb-4 text-lg font-semibold text-slate-900">New Receipt</h3>
+        <section className="mb-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
+          <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">New Receipt</h3>
           <form onSubmit={handleSave} className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-3">
               <FormField label="Receipt No">
@@ -596,8 +596,8 @@ export default function ReceiptEntryPage() {
             <div>
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
-                  <h4 className="font-semibold text-slate-900">Allocate against open invoices</h4>
-                  <p className="text-sm text-slate-500">
+                  <h4 className="font-semibold text-slate-900 dark:text-slate-100">Allocate against open invoices</h4>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
                     {form.customer_id
                       ? "Pick how much of this receipt pays off each invoice."
                       : "Select a customer to see their open invoices."}
@@ -629,18 +629,18 @@ export default function ReceiptEntryPage() {
                   />
                   {openInvoices.length > 0 && (
                     <div className="mt-3 flex justify-end gap-6 text-sm">
-                      <span className="text-slate-500">
+                      <span className="text-slate-500 dark:text-slate-400">
                         Allocated:{" "}
-                        <span className="font-semibold text-slate-900">{money.format(totalAllocated)}</span>
+                        <span className="font-semibold text-slate-900 dark:text-slate-100">{money.format(totalAllocated)}</span>
                       </span>
-                      <span className={unallocated < -EPSILON ? "text-red-600" : "text-slate-500"}>
+                      <span className={unallocated < -EPSILON ? "text-red-600" : "text-slate-500 dark:text-slate-400"}>
                         Unallocated: <span className="font-semibold">{money.format(unallocated)}</span>
                       </span>
                     </div>
                   )}
                 </>
               ) : (
-                <p className="text-sm text-slate-400">No customer selected yet.</p>
+                <p className="text-sm text-slate-400 dark:text-slate-500">No customer selected yet.</p>
               )}
             </div>
 
@@ -658,7 +658,7 @@ export default function ReceiptEntryPage() {
               <button
                 type="button"
                 onClick={closeForm}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50"
               >
                 Cancel
               </button>
@@ -668,7 +668,7 @@ export default function ReceiptEntryPage() {
       )}
 
       <div className="mb-2 mt-8 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-600">Recent Receipts</h3>
+        <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400">Recent Receipts</h3>
         <button type="button" onClick={clearFilters} className="text-sm font-medium text-brand hover:underline">
           Clear all filters
         </button>

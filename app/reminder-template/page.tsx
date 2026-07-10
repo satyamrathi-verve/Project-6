@@ -296,7 +296,7 @@ export default function ReminderTemplatePage() {
 
       {isConfigured && (
         <div className="space-y-6">
-          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
             <div className="flex flex-wrap items-center gap-2">
               {templates.map((t) => (
                 <button
@@ -306,7 +306,7 @@ export default function ReminderTemplatePage() {
                   className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
                     t.id === selectedId
                       ? "bg-brand text-white"
-                      : "border border-slate-200 text-slate-700 hover:border-brand hover:text-brand"
+                      : "border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-brand hover:text-brand"
                   }`}
                 >
                   {t.name}
@@ -318,7 +318,7 @@ export default function ReminderTemplatePage() {
                 className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
                   selectedId === null && !loading
                     ? "border-brand bg-brand/10 text-brand"
-                    : "border-dashed border-slate-300 text-slate-500 hover:border-brand hover:text-brand"
+                    : "border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-brand hover:text-brand"
                 }`}
               >
                 + New template
@@ -327,11 +327,11 @@ export default function ReminderTemplatePage() {
           </div>
 
           <div className="grid gap-6 2xl:grid-cols-[1.35fr_0.75fr]">
-            <form onSubmit={handleSave} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <form onSubmit={handleSave} className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
               <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900">Email template</h3>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Email template</h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     Create a professional reminder message for overdue invoices.
                   </p>
                 </div>
@@ -348,7 +348,7 @@ export default function ReminderTemplatePage() {
                   <button
                     type="button"
                     onClick={handleReset}
-                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700/50"
                   >
                     Reset
                   </button>
@@ -370,14 +370,14 @@ export default function ReminderTemplatePage() {
               </div>
 
               {loading ? (
-                <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                <div className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-4 text-sm text-slate-600 dark:text-slate-400">
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-brand border-t-transparent" />
                   Loading your templates...
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="rounded-2xl border border-slate-50 bg-slate-50/70 p-5">
-                    <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-5 dark:border-slate-700 dark:bg-slate-900/40">
+                    <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
                       Template
                     </h4>
                     <div className="mt-4">
@@ -396,8 +396,8 @@ export default function ReminderTemplatePage() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-50 bg-slate-50/70 p-5">
-                    <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">Email Content</h4>
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-5 dark:border-slate-700 dark:bg-slate-900/40">
+                    <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Email Content</h4>
                     <div className="mt-4 space-y-4">
                       <FormField label="Subject">
                         <input
@@ -433,20 +433,20 @@ export default function ReminderTemplatePage() {
             </form>
 
             <div className="space-y-6">
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-slate-900">Placeholders</h3>
-                <p className="mt-1 text-sm text-slate-500">Grouped by context — click to insert at the cursor.</p>
+              <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Placeholders</h3>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Grouped by context — click to insert at the cursor.</p>
                 <div className="mt-4 space-y-4">
                   {PLACEHOLDER_GROUPS.map((group) => (
                     <div key={group.title}>
-                      <p className="text-sm font-semibold text-slate-700">{group.title}</p>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{group.title}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {group.placeholders.map((placeholder) => (
                           <button
                             key={placeholder}
                             type="button"
                             onClick={() => insertPlaceholder(placeholder)}
-                            className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700 transition hover:border-brand hover:bg-brand/10 hover:text-brand"
+                            className="rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 px-3 py-1 text-sm font-medium text-slate-700 dark:text-slate-300 transition hover:border-brand hover:bg-brand/10 hover:text-brand"
                           >
                             {placeholder}
                           </button>
@@ -457,8 +457,8 @@ export default function ReminderTemplatePage() {
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-slate-900">Live Email Preview</h3>
+              <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Live Email Preview</h3>
                 <div className="mt-3">
                   <FormField label="Preview with">
                     <select
@@ -475,12 +475,12 @@ export default function ReminderTemplatePage() {
                     </select>
                   </FormField>
                 </div>
-                <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                  <div className="border-b border-slate-200 bg-white px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Subject</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{previewSubject}</p>
+                <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40">
+                  <div className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Subject</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{previewSubject}</p>
                   </div>
-                  <div className="p-4 text-sm text-slate-700">
+                  <div className="p-4 text-sm text-slate-700 dark:text-slate-300">
                     <p className="whitespace-pre-wrap">{previewBody}</p>
                   </div>
                 </div>
@@ -490,11 +490,11 @@ export default function ReminderTemplatePage() {
 
           {showPreview && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-              <div className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
+              <div className="w-full max-w-2xl rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-xl">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900">Email Preview</h3>
-                    <p className="text-sm text-slate-500">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Email Preview</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
                       {previewInvoice
                         ? `Rendered with real values from ${previewInvoice.invoice_no}.`
                         : "Rendered with sample customer and invoice values."}
@@ -503,17 +503,17 @@ export default function ReminderTemplatePage() {
                   <button
                     type="button"
                     onClick={() => setShowPreview(false)}
-                    className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700/50"
                   >
                     Close
                   </button>
                 </div>
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                  <div className="border-b border-slate-200 bg-white px-4 py-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Subject</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{previewSubject}</p>
+                <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40">
+                  <div className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Subject</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{previewSubject}</p>
                   </div>
-                  <div className="p-4 text-sm text-slate-700">
+                  <div className="p-4 text-sm text-slate-700 dark:text-slate-300">
                     <p className="whitespace-pre-wrap">{previewBody}</p>
                   </div>
                 </div>
@@ -523,7 +523,7 @@ export default function ReminderTemplatePage() {
 
           {confirmDelete && (
             <Modal title="Delete this template?" onClose={() => setConfirmDelete(false)}>
-              <p className="text-sm text-slate-700">
+              <p className="text-sm text-slate-700 dark:text-slate-300">
                 Delete <span className="font-semibold">{name || "this template"}</span>? This can&apos;t be undone.
                 Any invoice reminders already sent using it will keep their record in the touchpoint log.
               </p>
@@ -531,7 +531,7 @@ export default function ReminderTemplatePage() {
                 <button
                   type="button"
                   onClick={() => setConfirmDelete(false)}
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700/50"
                 >
                   Cancel
                 </button>

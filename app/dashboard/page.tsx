@@ -58,9 +58,9 @@ function monthRange(): { start: string; end: string } {
 
 function StatTile({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 transition-shadow hover:shadow-md">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={`mt-1 text-lg font-bold ${accent ?? "text-slate-900"}`}>{value}</p>
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 transition-shadow hover:shadow-md">
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
+      <p className={`mt-1 text-lg font-bold ${accent ?? "text-slate-900 dark:text-slate-100"}`}>{value}</p>
     </div>
   );
 }
@@ -238,17 +238,17 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-xl border border-slate-200 bg-white p-5 transition-shadow hover:shadow-md">
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 transition-shadow hover:shadow-md">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-600">Collections Health</h3>
-                <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
+                <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400">Collections Health</h3>
+                <div className="flex gap-1 rounded-lg bg-slate-100 dark:bg-slate-700 p-1">
                   {(["week", "month"] as const).map((p) => (
                     <button
                       key={p}
                       type="button"
                       onClick={() => setPeriod(p)}
                       className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                        period === p ? "bg-brand text-white" : "text-slate-500 hover:text-slate-800"
+                        period === p ? "bg-brand text-white" : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:text-slate-200 dark:hover:text-slate-100"
                       }`}
                     >
                       {p === "week" ? "This Week" : "This Month"}
@@ -256,16 +256,16 @@ export default function DashboardPage() {
                   ))}
                 </div>
               </div>
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                 {collectionsHealth.start} to {collectionsHealth.end}
               </p>
               <div className="mt-4 flex items-end gap-6">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Expected</p>
-                  <p className="mt-1 text-xl font-bold text-slate-900">{money.format(collectionsHealth.expected)}</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Expected</p>
+                  <p className="mt-1 text-xl font-bold text-slate-900 dark:text-slate-100">{money.format(collectionsHealth.expected)}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Collected</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Collected</p>
                   <p
                     className={`mt-1 text-xl font-bold ${
                       collectionsHealth.actual >= collectionsHealth.expected ? "text-emerald-600" : "text-rose-600"
@@ -280,12 +280,12 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-5 transition-shadow hover:shadow-md">
-              <h3 className="text-sm font-semibold text-slate-600">Top 5 Overdue Customers</h3>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 transition-shadow hover:shadow-md">
+              <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400">Top 5 Overdue Customers</h3>
               {topOverdueCustomers.length === 0 ? (
-                <p className="mt-4 text-sm text-slate-400">No overdue customers right now.</p>
+                <p className="mt-4 text-sm text-slate-400 dark:text-slate-500">No overdue customers right now.</p>
               ) : (
-                <ul className="mt-3 divide-y divide-slate-100">
+                <ul className="mt-3 divide-y divide-slate-100 dark:divide-slate-700/60">
                   {topOverdueCustomers.map((c) => (
                     <li key={c.customerId} className="flex items-center justify-between py-2">
                       <Link href="/reports/ageing" className="text-sm font-medium text-brand hover:underline">
@@ -301,15 +301,15 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-5 transition-shadow hover:shadow-md">
-              <h3 className="text-sm font-semibold text-slate-600">DSO — Days Sales Outstanding</h3>
-              <p className="mt-1 text-xs text-slate-400">30-day trailing window</p>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 transition-shadow hover:shadow-md">
+              <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400">DSO — Days Sales Outstanding</h3>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">30-day trailing window</p>
               <div className="mt-4 flex items-end gap-3">
-                <p className="text-3xl font-bold text-slate-900">{dso.current.toFixed(1)}</p>
-                <p className="text-sm text-slate-500">days</p>
+                <p className="text-3xl font-bold text-slate-900 dark:text-slate-100">{dso.current.toFixed(1)}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">days</p>
                 <span
                   className={`ml-2 text-sm font-semibold ${
-                    dso.trend > 0 ? "text-rose-600" : dso.trend < 0 ? "text-emerald-600" : "text-slate-400"
+                    dso.trend > 0 ? "text-rose-600" : dso.trend < 0 ? "text-emerald-600" : "text-slate-400 dark:text-slate-500"
                   }`}
                 >
                   {dso.trend > 0 ? "▲" : dso.trend < 0 ? "▼" : "–"} {Math.abs(dso.trend).toFixed(1)} vs 30 days ago
@@ -317,19 +317,19 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-5 transition-shadow hover:shadow-md">
-              <h3 className="text-sm font-semibold text-slate-600">Average Collection Period by Customer</h3>
-              <p className="mt-1 text-xs text-slate-400">Slowest 5 payers, average days from invoice to payment</p>
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 transition-shadow hover:shadow-md">
+              <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400">Average Collection Period by Customer</h3>
+              <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Slowest 5 payers, average days from invoice to payment</p>
               {avgCollectionPeriod.length === 0 ? (
-                <p className="mt-4 text-sm text-slate-400">No paid invoices yet.</p>
+                <p className="mt-4 text-sm text-slate-400 dark:text-slate-500">No paid invoices yet.</p>
               ) : (
-                <ul className="mt-3 divide-y divide-slate-100">
+                <ul className="mt-3 divide-y divide-slate-100 dark:divide-slate-700/60">
                   {avgCollectionPeriod.map((c) => (
                     <li key={c.customerId} className="flex items-center justify-between py-2">
                       <Link href="/reports/statement" className="text-sm font-medium text-brand hover:underline">
                         {c.name}
                       </Link>
-                      <span className="text-sm font-semibold text-slate-700">{c.avgDays} days</span>
+                      <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{c.avgDays} days</span>
                     </li>
                   ))}
                 </ul>

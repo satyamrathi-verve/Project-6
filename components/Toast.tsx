@@ -15,9 +15,18 @@ type ToastContextValue = {
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 const STYLES: Record<ToastKind, { border: string; icon: ReactNode }> = {
-  success: { border: "border-emerald-200 bg-emerald-50 text-emerald-800", icon: <CheckCircle2 className="h-4 w-4 text-emerald-600" /> },
-  error: { border: "border-rose-200 bg-rose-50 text-rose-800", icon: <XCircle className="h-4 w-4 text-rose-600" /> },
-  info: { border: "border-slate-200 bg-white text-slate-800", icon: <Info className="h-4 w-4 text-slate-500" /> },
+  success: {
+    border: "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
+    icon: <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />,
+  },
+  error: {
+    border: "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200",
+    icon: <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400" />,
+  },
+  info: {
+    border: "border-slate-200 bg-white text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200",
+    icon: <Info className="h-4 w-4 text-slate-500 dark:text-slate-400" />,
+  },
 };
 
 let nextId = 1;

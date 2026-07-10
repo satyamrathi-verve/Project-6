@@ -448,7 +448,7 @@ export default function InvoiceListPage() {
       ),
       filter: () => (
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Search invoice #</label>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Search invoice #</label>
           <input
             className={`${inputClass} w-full`}
             placeholder="e.g. INV-0007"
@@ -466,9 +466,9 @@ export default function InvoiceListPage() {
       render: (r) => formatDate(r.invoice_date),
       filter: () => (
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">From</label>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">From</label>
           <input type="date" className={inputClass} value={minDate} onChange={(e) => setMinDate(e.target.value)} />
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">To</label>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">To</label>
           <input type="date" className={inputClass} value={maxDate} onChange={(e) => setMaxDate(e.target.value)} />
         </div>
       ),
@@ -480,14 +480,14 @@ export default function InvoiceListPage() {
       render: (r) => formatDate(r.due_date),
       filter: () => (
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">From</label>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">From</label>
           <input
             type="date"
             className={inputClass}
             value={minDueDate}
             onChange={(e) => setMinDueDate(e.target.value)}
           />
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">To</label>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">To</label>
           <input
             type="date"
             className={inputClass}
@@ -506,7 +506,7 @@ export default function InvoiceListPage() {
         const matches = customerNames.filter((n) => n.toLowerCase().includes(customerSearch.toLowerCase()));
         return (
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Search customer</label>
+            <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Search customer</label>
             <input
               className={`${inputClass} w-full`}
               placeholder="Type to search…"
@@ -516,7 +516,7 @@ export default function InvoiceListPage() {
             />
             <div className="max-h-40 overflow-y-auto">
               {matches.length === 0 ? (
-                <p className="px-1 py-1 text-xs text-slate-400">No matching customers.</p>
+                <p className="px-1 py-1 text-xs text-slate-400 dark:text-slate-500">No matching customers.</p>
               ) : (
                 matches.map((name) => (
                   <button
@@ -526,7 +526,7 @@ export default function InvoiceListPage() {
                       setCustomerSearch(name);
                       close();
                     }}
-                    className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-slate-100"
+                    className="block w-full rounded px-2 py-1 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-700"
                   >
                     {name}
                   </button>
@@ -554,14 +554,14 @@ export default function InvoiceListPage() {
       render: (r) => money.format(Number(r.total)),
       filter: () => (
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Min total</label>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Min total</label>
           <input
             type="number"
             className={inputClass}
             value={minTotal}
             onChange={(e) => setMinTotal(e.target.value)}
           />
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Max total</label>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Max total</label>
           <input
             type="number"
             className={inputClass}
@@ -578,7 +578,7 @@ export default function InvoiceListPage() {
       render: (r) => r.notes ?? "—",
       filter: () => (
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Search memo</label>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Search memo</label>
           <input
             className={`${inputClass} w-full`}
             value={memoSearch}
@@ -603,8 +603,8 @@ export default function InvoiceListPage() {
                 setStatus(f.value);
                 close();
               }}
-              className={`rounded px-2 py-1 text-left text-sm hover:bg-slate-100 ${
-                status === f.value ? "bg-slate-100 font-medium text-slate-900" : ""
+              className={`rounded px-2 py-1 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-700 ${
+                status === f.value ? "bg-slate-100 dark:bg-slate-700 font-medium text-slate-900 dark:text-slate-100" : ""
               }`}
             >
               {f.label}
@@ -650,13 +650,13 @@ export default function InvoiceListPage() {
       />
 
       {showForm && (
-        <section className="mb-6 rounded-xl border border-slate-200 bg-white p-6">
-          <h3 className="mb-4 text-lg font-semibold text-slate-900">
+        <section className="mb-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6">
+          <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
             {selectedId ? "Edit Invoice" : "New Invoice"}
           </h3>
 
           {formLoading ? (
-            <p className="text-sm text-slate-400">Loading invoice…</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500">Loading invoice…</p>
           ) : (
             <form onSubmit={handleSaveInvoice} className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-3">
@@ -707,7 +707,7 @@ export default function InvoiceListPage() {
                       className={inputClass}
                     />
                   ) : (
-                    <input value={form.due_date} readOnly className={`${inputClass} bg-slate-100`} />
+                    <input value={form.due_date} readOnly className={`${inputClass} bg-slate-100 dark:bg-slate-700`} />
                   )}
                 </FormField>
                 <FormField label="Tax amount">
@@ -729,9 +729,9 @@ export default function InvoiceListPage() {
                 </FormField>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-900">Line items</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Line items</p>
                   <button
                     type="button"
                     onClick={handleAddItem}
@@ -744,7 +744,7 @@ export default function InvoiceListPage() {
                   {form.items.map((item, index) => (
                     <div
                       key={`${item.id}-${index}`}
-                      className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-[1.4fr_0.9fr_0.9fr_0.9fr_auto]"
+                      className="grid gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 sm:grid-cols-[1.4fr_0.9fr_0.9fr_0.9fr_auto]"
                     >
                       <FormField label="Description">
                         <input
@@ -778,7 +778,7 @@ export default function InvoiceListPage() {
                         />
                       </FormField>
                       <FormField label="Amount">
-                        <input value={money.format(item.amount)} readOnly className={`${inputClass} bg-slate-100`} />
+                        <input value={money.format(item.amount)} readOnly className={`${inputClass} bg-slate-100 dark:bg-slate-700`} />
                       </FormField>
                       <div className="flex items-end justify-end pb-2">
                         <button
@@ -795,17 +795,17 @@ export default function InvoiceListPage() {
               </div>
 
               <div className="flex justify-end">
-                <div className="w-72 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
-                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Summary</p>
-                  <div className="flex items-center justify-between py-1 text-slate-600">
+                <div className="w-72 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-4 text-sm">
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Summary</p>
+                  <div className="flex items-center justify-between py-1 text-slate-600 dark:text-slate-400">
                     <span>Subtotal</span>
                     <span>{money.format(totals.subtotal)}</span>
                   </div>
-                  <div className="flex items-center justify-between py-1 text-slate-600">
+                  <div className="flex items-center justify-between py-1 text-slate-600 dark:text-slate-400">
                     <span>Tax</span>
                     <span>{money.format(totals.taxAmount)}</span>
                   </div>
-                  <div className="flex items-center justify-between border-t border-slate-200 pt-2 font-semibold text-slate-900">
+                  <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-2 font-semibold text-slate-900 dark:text-slate-100">
                     <span>Total</span>
                     <span>{money.format(totals.total)}</span>
                   </div>
@@ -825,7 +825,7 @@ export default function InvoiceListPage() {
                 <button
                   type="button"
                   onClick={closeInvoiceForm}
-                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50"
                 >
                   Cancel
                 </button>

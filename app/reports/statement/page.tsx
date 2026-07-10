@@ -156,7 +156,7 @@ export default function CustomerStatementPage() {
           <button
             type="button"
             onClick={() => window.print()}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 print:hidden"
+            className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 print:hidden"
           >
             Print
           </button>
@@ -194,7 +194,7 @@ export default function CustomerStatementPage() {
                   className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
                     filter === f.value
                       ? "border-brand bg-brand text-white"
-                      : "border-slate-300 text-slate-700 hover:bg-slate-50"
+                      : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50"
                   }`}
                 >
                   {f.label}
@@ -206,7 +206,7 @@ export default function CustomerStatementPage() {
           {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
 
           {!customerId ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-sm text-slate-500">
+            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-6 text-sm text-slate-500 dark:text-slate-400">
               Select a customer above to view their statement.
             </div>
           ) : loading ? (
@@ -214,9 +214,9 @@ export default function CustomerStatementPage() {
           ) : (
             <div className="print:overflow-visible">
               {customer && (
-                <div className="mb-3 flex items-center justify-between text-sm text-slate-600">
+                <div className="mb-3 flex items-center justify-between text-sm text-slate-600 dark:text-slate-400">
                   <span>
-                    Opening balance: <span className="font-medium text-slate-900">{money.format(customer.opening_balance)}</span>
+                    Opening balance: <span className="font-medium text-slate-900 dark:text-slate-100">{money.format(customer.opening_balance)}</span>
                   </span>
                 </div>
               )}
@@ -226,7 +226,7 @@ export default function CustomerStatementPage() {
                 rows={visibleRows}
                 empty="No transactions for this customer yet."
                 footerRow={
-                  <tr className="border-t-2 border-slate-300 bg-slate-50 font-semibold text-slate-900">
+                  <tr className="border-t-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/40 font-semibold text-slate-900 dark:text-slate-100">
                     <td className="px-4 py-3" colSpan={4}>
                       Closing balance (amount outstanding)
                     </td>

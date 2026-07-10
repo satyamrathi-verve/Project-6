@@ -89,9 +89,9 @@ export default function InvoiceViewPage() {
 
   if (!invoice) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-10 text-center">
-        <p className="font-semibold text-slate-700">Invoice not found.</p>
-        <p className="mt-1 text-sm text-slate-500">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-10 text-center">
+        <p className="font-semibold text-slate-700 dark:text-slate-300">Invoice not found.</p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           It may have been deleted, or the link is wrong.
         </p>
         <Link href="/invoices" className="mt-4 inline-block text-sm font-medium text-brand hover:underline">
@@ -161,22 +161,22 @@ export default function InvoiceViewPage() {
 
       {/* Status + key amounts */}
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Status</p>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Status</p>
           <div className="mt-2">
             <StatusBadge status={liveStatus} />
           </div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Invoice Total</p>
-          <p className="mt-1 text-lg font-bold text-slate-900">{money.format(Number(invoice.total))}</p>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Invoice Total</p>
+          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-slate-100">{money.format(Number(invoice.total))}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Received</p>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Received</p>
           <p className="mt-1 text-lg font-bold text-green-700">{money.format(received)}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Outstanding</p>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Outstanding</p>
           <p className={`mt-1 text-lg font-bold ${outstanding > 0 ? "text-red-600" : "text-green-700"}`}>
             {money.format(outstanding)}
           </p>
@@ -184,44 +184,44 @@ export default function InvoiceViewPage() {
       </div>
 
       {/* Customer block */}
-      <div className="mb-6 rounded-xl border border-slate-200 bg-white p-5">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Billed To</p>
+      <div className="mb-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Billed To</p>
         {customer ? (
           <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="font-semibold text-slate-900">
-                {customer.name} <span className="ml-1 text-sm font-normal text-slate-400">({customer.code})</span>
+              <p className="font-semibold text-slate-900 dark:text-slate-100">
+                {customer.name} <span className="ml-1 text-sm font-normal text-slate-400 dark:text-slate-500">({customer.code})</span>
               </p>
-              {customer.address && <p className="mt-1 text-sm text-slate-500">{customer.address}</p>}
-              {customer.gstin && <p className="mt-1 text-sm text-slate-500">GSTIN: {customer.gstin}</p>}
+              {customer.address && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{customer.address}</p>}
+              {customer.gstin && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">GSTIN: {customer.gstin}</p>}
             </div>
-            <div className="text-sm text-slate-500">
+            <div className="text-sm text-slate-500 dark:text-slate-400">
               {customer.contact_person && <p>{customer.contact_person}</p>}
               {customer.email && <p>{customer.email}</p>}
               {customer.phone && <p>{customer.phone}</p>}
             </div>
           </div>
         ) : (
-          <p className="mt-2 text-sm text-slate-400">Customer record not found.</p>
+          <p className="mt-2 text-sm text-slate-400 dark:text-slate-500">Customer record not found.</p>
         )}
       </div>
 
       {/* Line items */}
-      <h3 className="mb-2 text-sm font-semibold text-slate-600">Line Items</h3>
+      <h3 className="mb-2 text-sm font-semibold text-slate-600 dark:text-slate-400">Line Items</h3>
       <DataTable columns={itemColumns} rows={items} empty="No line items on this invoice." />
 
       {/* Totals */}
       <div className="mt-4 flex justify-end">
-        <div className="w-72 rounded-xl border border-slate-200 bg-white p-4 text-sm">
-          <div className="flex justify-between py-1 text-slate-600">
+        <div className="w-72 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 text-sm">
+          <div className="flex justify-between py-1 text-slate-600 dark:text-slate-400">
             <span>Subtotal</span>
             <span>{money.format(Number(invoice.subtotal))}</span>
           </div>
-          <div className="flex justify-between py-1 text-slate-600">
+          <div className="flex justify-between py-1 text-slate-600 dark:text-slate-400">
             <span>Tax</span>
             <span>{money.format(Number(invoice.tax_amount))}</span>
           </div>
-          <div className="mt-1 flex justify-between border-t border-slate-200 pt-2 font-bold text-slate-900">
+          <div className="mt-1 flex justify-between border-t border-slate-200 dark:border-slate-700 pt-2 font-bold text-slate-900 dark:text-slate-100">
             <span>Total</span>
             <span>{money.format(Number(invoice.total))}</span>
           </div>
@@ -229,7 +229,7 @@ export default function InvoiceViewPage() {
             <span>Received</span>
             <span>− {money.format(received)}</span>
           </div>
-          <div className="flex justify-between border-t border-slate-200 pt-2 font-semibold text-red-600">
+          <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-2 font-semibold text-red-600">
             <span>Outstanding</span>
             <span>{money.format(outstanding)}</span>
           </div>
@@ -237,13 +237,13 @@ export default function InvoiceViewPage() {
       </div>
 
       {/* Payments received */}
-      <h3 className="mb-2 mt-8 text-sm font-semibold text-slate-600">Payments Against This Invoice</h3>
+      <h3 className="mb-2 mt-8 text-sm font-semibold text-slate-600 dark:text-slate-400">Payments Against This Invoice</h3>
       <DataTable columns={paymentColumns} rows={allocations} empty="No payments received yet." />
 
       {invoice.notes && (
-        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Notes</p>
-          <p className="mt-2 text-sm text-slate-700">{invoice.notes}</p>
+        <div className="mt-6 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Notes</p>
+          <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">{invoice.notes}</p>
         </div>
       )}
     </div>

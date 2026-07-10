@@ -83,22 +83,22 @@ export default function SignInPage() {
       </aside>
 
       {/* Form panel */}
-      <main className="flex flex-1 items-center justify-center bg-slate-50 p-6">
+      <main className="flex flex-1 items-center justify-center bg-slate-50 dark:bg-slate-900/40 p-6">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-2 lg:hidden">
             <Image src="/verve-logo.png" alt="Verve" width={110} height={54} className="h-9 w-auto" priority />
           </div>
 
-          <h1 className="text-2xl font-bold text-slate-900">Welcome back</h1>
-          <p className="mt-1 text-sm text-slate-500">Sign in to your AR Manager account.</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Welcome back</h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Sign in to your AR Manager account.</p>
 
           <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Username
               </label>
               <div className="relative">
-                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 dark:text-slate-500">
                   <Mail className="h-4 w-4" />
                 </span>
                 <input
@@ -113,11 +113,11 @@ export default function SignInPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Password
               </label>
               <div className="relative">
-                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 dark:text-slate-500">
                   <Lock className="h-4 w-4" />
                 </span>
                 <input
@@ -130,7 +130,7 @@ export default function SignInPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((s) => !s)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -151,7 +151,7 @@ export default function SignInPage() {
             </button>
           </form>
 
-          <p className="mt-6 text-center text-xs text-slate-400">
+          <p className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500">
             Demo logins: admin / admin123, finance / finance123
           </p>
         </div>
