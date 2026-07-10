@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  ComposedChart,
+  Area,
+  AreaChart,
   Bar,
-  Line,
+  BarChart,
   XAxis,
   YAxis,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
@@ -313,41 +313,53 @@ export default function CashflowPage() {
         </div>
       ) : (
         <>
-          <div className="mb-6 h-72 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={dateBuckets}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="date" tickFormatter={(d) => formatDate(d)} tick={{ fontSize: 12 }} />
-                <YAxis
-                  yAxisId="left"
-                  tickFormatter={(v) => money.format(Number(v))}
-                  tick={{ fontSize: 12 }}
-                  width={90}
-                />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  tickFormatter={(v) => money.format(Number(v))}
-                  tick={{ fontSize: 12 }}
-                  width={90}
-                />
-                <Tooltip
-                  formatter={(v) => money.format(Number(v))}
-                  labelFormatter={(d) => formatDate(String(d))}
-                />
-                <Legend />
-                <Bar yAxisId="left" dataKey="amount" name="Daily Collection" fill="#244788" radius={[4, 4, 0, 0]} />
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="cumulative"
-                  name="Cumulative Collections"
-                  stroke="#dc2626"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
+          <div className="mb-6 grid gap-6 lg:grid-cols-2">
+            <div className="h-64 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+              <p className="mb-2 text-sm font-semibold text-slate-600 dark:text-slate-400">Daily Collection</p>
+              <ResponsiveContainer width="100%" height="85%">
+                <BarChart data={dateBuckets}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="date" tickFormatter={(d) => formatDate(d)} tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                  <YAxis tickFormatter={(v) => money.format(Number(v))} tick={{ fontSize: 11 }} width={80} stroke="#94a3b8" />
+                  <Tooltip
+                    formatter={(v) => money.format(Number(v))}
+                    labelFormatter={(d) => formatDate(String(d))}
+                    contentStyle={{ borderRadius: 8, fontSize: 12 }}
+                  />
+                  <Bar dataKey="amount" fill="#244788" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="h-64 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4">
+              <p className="mb-2 text-sm font-semibold text-slate-600 dark:text-slate-400">Cumulative Collections</p>
+              <ResponsiveContainer width="100%" height="85%">
+                <AreaChart data={dateBuckets}>
+                  <defs>
+                    <linearGradient id="cumulativeFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#244788" stopOpacity={0.1} />
+                      <stop offset="100%" stopColor="#244788" stopOpacity={0.1} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="date" tickFormatter={(d) => formatDate(d)} tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                  <YAxis tickFormatter={(v) => money.format(Number(v))} tick={{ fontSize: 11 }} width={80} stroke="#94a3b8" />
+                  <Tooltip
+                    formatter={(v) => money.format(Number(v))}
+                    labelFormatter={(d) => formatDate(String(d))}
+                    contentStyle={{ borderRadius: 8, fontSize: 12 }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="cumulative"
+                    stroke="#244788"
+                    strokeWidth={2}
+                    fill="url(#cumulativeFill)"
+                    dot={{ r: 3, fill: "#244788" }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
           <div className="mb-2 flex items-center justify-between">

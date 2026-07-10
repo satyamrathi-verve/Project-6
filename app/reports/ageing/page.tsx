@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DataTable, type Column } from "@/components/DataTable";
 import { PageHeader } from "@/components/PageHeader";
 import { NotConfigured } from "@/components/NotConfigured";
@@ -147,6 +148,19 @@ export default function AgeingReportPage() {
         { ...ZERO_BUCKETS }
       ),
     [rows]
+  );
+
+  // One sequential hue (red = risk), darkening with severity — "Not due" is
+  // its own neutral color since it isn't risk at all, not a step on the ramp.
+  const bucketChartData = useMemo(
+    () => [
+      { key: "notDue", name: "Not Due", value: grandTotal.notDue, color: "#94a3b8" },
+      { key: "b0_30", name: "0–30 Days", value: grandTotal.b0_30, color: "#fbbf24" },
+      { key: "b31_60", name: "31–60 Days", value: grandTotal.b31_60, color: "#f97316" },
+      { key: "b61_90", name: "61–90 Days", value: grandTotal.b61_90, color: "#ef4444" },
+      { key: "b90plus", name: "90+ Days", value: grandTotal.b90plus, color: "#991b1b" },
+    ],
+    [grandTotal]
   );
 
   const customerInvoices = useMemo(() => {
@@ -305,6 +319,34 @@ export default function AgeingReportPage() {
         <TableSkeleton rows={8} />
       ) : (
         <div className="print:overflow-visible">
+          <div className="mb-6 h-56 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 print:hidden">
+            <p className="mb-2 text-sm font-semibold text-slate-600 dark:text-slate-400">Outstanding by age bucket</p>
+            <ResponsiveContainer width="100%" height="85%">
+              <BarChart data={bucketChartData} margin={{ top: 16, right: 8, left: 8, bottom: 0 }}>
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                <YAxis tickFormatter={(v) => money.format(Number(v))} tick={{ fontSize: 11 }} width={80} stroke="#94a3b8" />
+                <Tooltip
+                  cursor={{ fill: "rgba(148, 163, 184, 0.15)" }}
+                  formatter={(v) => money.format(Number(v))}
+                  labelFormatter={(label) => label}
+                  contentStyle={{ borderRadius: 8, fontSize: 12 }}
+                />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={64}>
+                  {bucketChartData.map((entry) => (
+                    <Cell key={entry.key} fill={entry.color} />
+                  ))}
+                  <LabelList
+                    dataKey="value"
+                    position="top"
+                    formatter={(v: unknown) => (Number(v) > 0 ? money.format(Number(v)) : "")}
+                    style={{ fontSize: 11, fill: "currentColor" }}
+                    className="fill-slate-600 dark:fill-slate-300"
+                  />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
           <DataTable
             columns={columns}
             rows={sortedRows}
