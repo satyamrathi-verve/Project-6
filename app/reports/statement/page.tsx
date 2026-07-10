@@ -47,6 +47,17 @@ export default function CustomerStatementPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterValue>("all");
+  const [sortKey, setSortKey] = useState<string>("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  function toggleSort(key: string) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
 
   useEffect(() => {
     if (!supabase) return;
@@ -119,31 +130,64 @@ export default function CustomerStatementPage() {
   const closingBalance = ledger.length > 0 ? ledger[ledger.length - 1].runningBalance : customer?.opening_balance ?? 0;
 
   const visibleRows = useMemo(() => {
-    if (filter === "invoices") return ledger.filter((e) => e.type === "invoice");
-    if (filter === "payments") return ledger.filter((e) => e.type === "receipt");
-    return ledger;
-  }, [ledger, filter]);
+    const filtered =
+      filter === "invoices"
+        ? ledger.filter((e) => e.type === "invoice")
+        : filter === "payments"
+        ? ledger.filter((e) => e.type === "receipt")
+        : ledger;
+
+    const sorted = [...filtered].sort((a, b) => {
+      const av = a[sortKey as keyof LedgerEntry];
+      const bv = b[sortKey as keyof LedgerEntry];
+      if (typeof av === "number" && typeof bv === "number") return av - bv;
+      return String(av ?? "").localeCompare(String(bv ?? ""));
+    });
+    return sortDir === "asc" ? sorted : sorted.reverse();
+  }, [ledger, filter, sortKey, sortDir]);
 
   const columns: Column<LedgerEntry>[] = [
-    { key: "date", header: "Date", render: (r) => formatDate(r.date) },
-    { key: "reference", header: "Reference" },
+    { key: "date", header: "Date", sortable: true, render: (r) => formatDate(r.date) },
+    { key: "reference", header: "Reference", sortable: true },
     {
       key: "debit",
       header: "Invoice (Dr)",
+      sortable: true,
       className: "text-right",
       render: (r) => (r.debit > 0 ? money.format(r.debit) : "—"),
     },
     {
       key: "credit",
       header: "Payment (Cr)",
+      sortable: true,
       className: "text-right",
       render: (r) => (r.credit > 0 ? money.format(r.credit) : "—"),
     },
     {
       key: "runningBalance",
       header: "Running Balance",
+      sortable: true,
       className: "text-right font-medium",
       render: (r) => money.format(r.runningBalance),
+      filter: (close) => (
+        <div className="flex flex-col gap-1">
+          {FILTERS.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => {
+                setFilter(f.value);
+                close();
+              }}
+              className={`rounded px-2 py-1 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-700 ${
+                filter === f.value ? "bg-slate-100 font-medium text-slate-900 dark:bg-slate-700 dark:text-slate-100" : ""
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      ),
     },
   ];
 
@@ -184,23 +228,6 @@ export default function CustomerStatementPage() {
                 ))}
               </select>
             </FormField>
-
-            <div className="flex gap-2">
-              {FILTERS.map((f) => (
-                <button
-                  key={f.value}
-                  type="button"
-                  onClick={() => setFilter(f.value)}
-                  className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                    filter === f.value
-                      ? "border-brand bg-brand text-white"
-                      : "border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50"
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
           </div>
 
           {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
@@ -225,6 +252,9 @@ export default function CustomerStatementPage() {
                 columns={columns}
                 rows={visibleRows}
                 empty="No transactions for this customer yet."
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onSort={toggleSort}
                 footerRow={
                   <tr className="border-t-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/40 font-semibold text-slate-900 dark:text-slate-100">
                     <td className="px-4 py-3" colSpan={4}>
