@@ -3,69 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  LayoutDashboard,
-  Users,
-  BookOpen,
-  FileText,
-  Wallet,
-  UploadCloud,
-  Bell,
-  MailPlus,
-  ScrollText,
-  BarChart3,
-  TrendingUp,
-  LogOut,
-} from "lucide-react";
+import { LogOut } from "lucide-react";
 import { signOut } from "@/lib/auth";
+import { NAV_GROUPS } from "@/lib/nav";
 import { ThemeToggle } from "@/components/ThemeToggle";
-
-/*
-  Left sidebar, grouped by workflow. Home ("/") and Sign In aren't listed here —
-  Home is just a redirect shim to Dashboard and Sign In isn't a meaningful
-  destination once you're already signed in (both routes still exist for their
-  actual flows). Each unbuilt screen shows a "build me" tag. When you finish a
-  screen, flip its `built` to true (and point `href` at the route you created)
-  so it turns into a real link.
-*/
-type NavLink = { href: string; label: string; built: boolean; icon: typeof LayoutDashboard };
-
-const GROUPS: { title: string; links: NavLink[] }[] = [
-  {
-    title: "Overview",
-    links: [{ href: "/dashboard", label: "Dashboard", built: true, icon: LayoutDashboard }],
-  },
-  {
-    title: "Masters",
-    links: [
-      { href: "/masters/customers", label: "Customer Master", built: true, icon: Users },
-      { href: "/masters/gl", label: "GL Master", built: true, icon: BookOpen },
-    ],
-  },
-  {
-    title: "Transactions",
-    links: [
-      { href: "/invoices", label: "Sales Invoices", built: true, icon: FileText },
-      { href: "/receipts", label: "Receipt Entry", built: true, icon: Wallet },
-      { href: "/upload", label: "Upload Report", built: true, icon: UploadCloud },
-    ],
-  },
-  {
-    title: "Collections",
-    links: [
-      { href: "/reminders", label: "AR Followup", built: true, icon: Bell },
-      { href: "/reminder-template", label: "Reminder Template", built: true, icon: MailPlus },
-    ],
-  },
-  {
-    title: "Reports",
-    links: [
-      { href: "/reports/statement", label: "Customer Statement", built: true, icon: ScrollText },
-      { href: "/reports/ageing", label: "AR Ageing", built: true, icon: BarChart3 },
-      { href: "/cashflow", label: "Cashflow Projection", built: true, icon: TrendingUp },
-    ],
-  },
-];
 
 export function Nav() {
   const pathname = usePathname();
@@ -87,7 +28,7 @@ export function Nav() {
         <span className="text-sm font-semibold text-white/70">| AR Manager</span>
       </div>
 
-      {GROUPS.map((group) => (
+      {NAV_GROUPS.map((group) => (
         <div key={group.title} className="mb-3">
           <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-white/40">
             {group.title}
