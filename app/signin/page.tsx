@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { inputClass } from "@/components/FormField";
 import { signIn } from "@/lib/auth";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 /*
   Front-end-only login gate: no real auth backend, no `users` table. Credentials
@@ -83,7 +84,11 @@ export default function SignInPage() {
       </aside>
 
       {/* Form panel */}
-      <main className="flex flex-1 items-center justify-center bg-slate-50 dark:bg-slate-900/40 p-6">
+      <main className="relative flex flex-1 items-center justify-center bg-slate-50 dark:bg-slate-900/40 p-6">
+        <div className="absolute right-4 top-4">
+          <ThemeToggle variant="plain" />
+        </div>
+
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-2 lg:hidden">
             <Image src="/verve-logo.png" alt="Verve" width={110} height={54} className="h-9 w-auto" priority />
@@ -139,7 +144,7 @@ export default function SignInPage() {
             </div>
 
             {error && (
-              <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>
+              <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600 dark:bg-rose-950 dark:text-rose-300">{error}</p>
             )}
 
             <button
