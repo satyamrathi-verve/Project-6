@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Line, LineChart, ResponsiveContainer, Tooltip } from "recharts";
 import { PageHeader } from "@/components/PageHeader";
 import { NotConfigured } from "@/components/NotConfigured";
 import { CardSkeleton } from "@/components/Skeleton";
@@ -56,11 +57,101 @@ function monthRange(): { start: string; end: string } {
   return { start: toDateStr(start), end: toDateStr(end) };
 }
 
-function StatTile({ label, value, accent }: { label: string; value: string; accent?: string }) {
+type TrendPoint = { date: string; value: number };
+
+// Stat-tile sparkline: the historical line stays in a de-emphasis hue (it's
+// context, not the headline), and only the current/last point is drawn in
+// the direction color — good (declining) vs bad (rising) — so the reader's
+// eye lands on "where things are now," not the whole shape.
+function Sparkline({
+  data,
+  color,
+  formatValue,
+}: {
+  data: TrendPoint[];
+  color: string;
+  formatValue: (value: number) => string;
+}) {
+  return (
+    <div className="h-8 w-20 shrink-0">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+          <Tooltip
+            cursor={{ stroke: "#94a3b8", strokeWidth: 1 }}
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null;
+              const point = payload[0].payload as TrendPoint;
+              return (
+                <div className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{formatValue(point.value)}</p>
+                  <p className="text-slate-400 dark:text-slate-500">{formatDate(point.date)}</p>
+                </div>
+              );
+            }}
+          />
+          <Line
+            type="monotone"
+            dataKey="value"
+            stroke="#94a3b8"
+            strokeWidth={2}
+            isAnimationActive={false}
+            dot={(props: { cx?: number; cy?: number; index?: number }) => {
+              const isLast = props.index === data.length - 1;
+              return isLast ? (
+                <circle
+                  key="current"
+                  cx={props.cx}
+                  cy={props.cy}
+                  r={3}
+                  fill={color}
+                  stroke="var(--sparkline-surface, #fff)"
+                  strokeWidth={1.5}
+                />
+              ) : (
+                <g key={`pt-${props.index}`} />
+              );
+            }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+}
+
+function StatTile({
+  label,
+  value,
+  accent,
+  delta,
+  trend,
+  trendColor,
+  formatTrendValue,
+}: {
+  label: string;
+  value: string;
+  accent?: string;
+  /** Signed change vs a named period, e.g. "▲ 3 vs last week". */
+  delta?: { text: string; color: string };
+  trend?: TrendPoint[];
+  trendColor?: string;
+  formatTrendValue?: (value: number) => string;
+}) {
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 transition-shadow hover:shadow-md">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
-      <p className={`mt-1 text-lg font-bold ${accent ?? "text-slate-900 dark:text-slate-100"}`}>{value}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
+          <p className={`mt-1 text-lg font-bold ${accent ?? "text-slate-900 dark:text-slate-100"}`}>{value}</p>
+          {delta && <p className={`mt-1 text-xs font-semibold ${delta.color}`}>{delta.text}</p>}
+        </div>
+        {trend && trend.length > 1 && (
+          <Sparkline data={trend} color={trendColor ?? "#244788"} formatValue={formatTrendValue ?? String} />
+        )}
+      </div>
     </div>
   );
 }
@@ -123,6 +214,72 @@ export default function DashboardPage() {
 
     return { overdueCount, totalOutstanding };
   }, [invoices]);
+
+  // Retrospective weekly snapshots (8 points, ~7 weeks back to today) computed
+  // the same way DSO already does below — replaying each invoice's payment
+  // history as of a past cutoff date, since there's no daily snapshot table.
+  const weeklyHistory = useMemo(() => {
+    function snapshotAsOf(cutoff: Date) {
+      const cutoffStr = toDateStr(cutoff);
+      let outstanding = 0;
+      let overdueCount = 0;
+      for (const inv of invoices) {
+        if (inv.invoice_date > cutoffStr) continue;
+        const paidByCutoff = (inv.receipt_allocations ?? [])
+          .filter((a) => a.receipt && a.receipt.receipt_date <= cutoffStr)
+          .reduce((sum, a) => sum + Number(a.amount), 0);
+        const remaining = Number(inv.total) - paidByCutoff;
+        if (remaining > 0) {
+          outstanding += remaining;
+          if (inv.due_date < cutoffStr) overdueCount++;
+        }
+      }
+      return { outstanding, overdueCount };
+    }
+
+    const points: { date: string; outstanding: number; overdueCount: number }[] = [];
+    for (let weeksAgo = 7; weeksAgo >= 0; weeksAgo--) {
+      const cutoff = daysAgo(weeksAgo * 7);
+      points.push({ date: toDateStr(cutoff), ...snapshotAsOf(cutoff) });
+    }
+    return points;
+  }, [invoices]);
+
+  const outstandingTrend = useMemo(
+    () => weeklyHistory.map((p) => ({ date: p.date, value: p.outstanding })),
+    [weeklyHistory]
+  );
+  const overdueTrend = useMemo(
+    () => weeklyHistory.map((p) => ({ date: p.date, value: p.overdueCount })),
+    [weeklyHistory]
+  );
+
+  const lastWeek = weeklyHistory.at(-2);
+
+  // Both metrics share the same direction convention: less is better.
+  function directionStyle(diff: number): { textClass: string; hex: string } {
+    if (diff === 0) return { textClass: "text-slate-400 dark:text-slate-500", hex: "#94a3b8" };
+    return diff < 0
+      ? { textClass: "text-emerald-600 dark:text-emerald-400", hex: "#059669" }
+      : { textClass: "text-rose-600 dark:text-rose-400", hex: "#e11d48" };
+  }
+
+  const overdueDelta = useMemo(() => {
+    if (!lastWeek) return null;
+    const diff = stats.overdueCount - lastWeek.overdueCount;
+    const { textClass, hex } = directionStyle(diff);
+    const text = diff === 0 ? "No change vs last week" : `${diff > 0 ? "▲" : "▼"} ${Math.abs(diff)} vs last week`;
+    return { text, color: textClass, hex };
+  }, [stats.overdueCount, lastWeek]);
+
+  const outstandingDelta = useMemo(() => {
+    if (!lastWeek) return null;
+    const diff = stats.totalOutstanding - lastWeek.outstanding;
+    const { textClass, hex } = directionStyle(Math.abs(diff) < 1 ? 0 : diff);
+    const text =
+      Math.abs(diff) < 1 ? "No change vs last week" : `${diff > 0 ? "▲" : "▼"} ${money.format(Math.abs(diff))} vs last week`;
+    return { text, color: textClass, hex };
+  }, [stats.totalOutstanding, lastWeek]);
 
   const collectionsHealth = useMemo(() => {
     const { start, end } = period === "week" ? weekRange() : monthRange();
@@ -233,8 +390,18 @@ export default function DashboardPage() {
               label="Overdue Invoices"
               value={String(stats.overdueCount)}
               accent={stats.overdueCount > 0 ? "text-rose-600" : undefined}
+              delta={overdueDelta ?? undefined}
+              trend={overdueTrend}
+              trendColor={overdueDelta?.hex}
             />
-            <StatTile label="Total Outstanding" value={money.format(stats.totalOutstanding)} />
+            <StatTile
+              label="Total Outstanding"
+              value={money.format(stats.totalOutstanding)}
+              delta={outstandingDelta ?? undefined}
+              trend={outstandingTrend}
+              trendColor={outstandingDelta?.hex}
+              formatTrendValue={(v) => money.format(v)}
+            />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
@@ -248,7 +415,7 @@ export default function DashboardPage() {
                       type="button"
                       onClick={() => setPeriod(p)}
                       className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                        period === p ? "bg-brand text-white" : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:text-slate-200 dark:hover:text-slate-100"
+                        period === p ? "bg-brand text-white" : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100"
                       }`}
                     >
                       {p === "week" ? "This Week" : "This Month"}
